@@ -5,7 +5,16 @@ import { tap } from 'rxjs/operators';
 import { Game } from '../models/game.model';
 
 const BASE = 'https://api.webart.work/api/rnd';
-const OPTIONS = { withCredentials: true };
+const OPTIONS = {};
+
+function getOrCreateSid(): string {
+  let sid = localStorage.getItem('_sid');
+  if (!sid) {
+    sid = crypto.randomUUID();
+    localStorage.setItem('_sid', sid);
+  }
+  return sid;
+}
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
@@ -15,14 +24,22 @@ export class GameService {
     return this.http.get<Game[]>(`${BASE}/games`, OPTIONS);
   }
 
+  getNickname(): string {
+    return localStorage.getItem('nickname') || '';
+  }
+
+  setNickname(name: string): void {
+    localStorage.setItem('nickname', name.trim());
+  }
+
   createGame(mode: string, maxPlayers: number): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/create`, { mode, maxPlayers }, OPTIONS).pipe(
+    return this.http.post<Game>(`${BASE}/create`, { mode, maxPlayers, nickname: this.getNickname(), _sid: getOrCreateSid() }, OPTIONS).pipe(
       tap(game => this.setCreator(game._id, 0)),
     );
   }
 
   joinGame(id: string): Observable<Game | false> {
-    return this.http.post<Game | false>(`${BASE}/join`, { _id: id }, OPTIONS).pipe(
+    return this.http.post<Game | false>(`${BASE}/join`, { _id: id, nickname: this.getNickname(), _sid: getOrCreateSid() }, OPTIONS).pipe(
       tap(result => {
         if (result && typeof result === 'object' && '_id' in result) {
           const game = result as Game;
@@ -33,7 +50,19 @@ export class GameService {
   }
 
   updateGame(id: string, fields: Record<string, any>): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/update`, { _id: id, ...fields }, OPTIONS);
+    return this.http.post<Game>(`${BASE}/update`, { _id: id, ...fields, _sid: getOrCreateSid() }, OPTIONS);
+  }
+
+  submitVote(gameId: string, voterIndex: number, targetIndex: number): Observable<Game> {
+    return this.http.post<Game>(`${BASE}/vote`, { _id: gameId, voterIndex, targetIndex, _sid: getOrCreateSid() }, OPTIONS);
+  }
+
+  sendDayMessage(gameId: string, text: string): Observable<Game> {
+    return this.http.post<Game>(`${BASE}/chat/day`, { _id: gameId, text, _sid: getOrCreateSid() }, OPTIONS);
+  }
+
+  sendNightMessage(gameId: string, text: string): Observable<Game> {
+    return this.http.post<Game>(`${BASE}/chat/night`, { _id: gameId, text, _sid: getOrCreateSid() }, OPTIONS);
   }
 
   setCreator(gameId: string, playerIndex: number): void {

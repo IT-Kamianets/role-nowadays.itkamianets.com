@@ -14,6 +14,10 @@ export interface MafiaGameData {
   eliminated: number | null;
   winner: 'village' | 'mafia' | null;
   log: string[];
+  votes: Record<string, number>;
+  phaseStartedAt: number;
+  dayMessages?: { sender: number; text: string }[];
+  nightMessages?: { sender: number; text: string }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -65,6 +69,10 @@ export class ClassicMafiaService {
       eliminated: null,
       winner: null,
       log: ['Гра розпочалась! Настала перша ніч.'],
+      votes: {},
+      phaseStartedAt: Date.now(),
+      dayMessages: [],
+      nightMessages: [],
     };
   }
 
