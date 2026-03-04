@@ -4,7 +4,7 @@ export interface Game {
   creator: string;
   status: 'lobby' | 'running' | 'finished' | 'canceled';
   players: string[];
-  nicknames: string[];
+  nicknames?: string[];
   maxPlayers: number;
   pass: number;
   data: Record<string, any>;

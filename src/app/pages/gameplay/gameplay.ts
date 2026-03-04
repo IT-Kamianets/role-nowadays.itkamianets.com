@@ -465,9 +465,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
         switchMap(() => this.gameService.getGames()),
       ).subscribe(games => {
         const found = games.find(g => g._id === this.gameId) ?? null;
+
         const prevPhase = (this.currentGame()?.data as Partial<MafiaGameData>)?.phase;
         const newPhase  = (found?.data as Partial<MafiaGameData>)?.phase;
-        // Reset vote state when entering a new round
         if (prevPhase === 'voting' && newPhase !== 'voting') {
           this.hasVoted.set(false);
           this.myVoteTarget.set(null);
@@ -560,7 +560,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   playerName(index: number): string {
-    return this.currentGame()?.nicknames?.[index] || `Гравець ${index + 1}`;
+    // Якщо сервер повернув nicknames — використовуємо
+    const fromServer = this.currentGame()?.nicknames?.[index];
+    if (fromServer) return fromServer;
+    // Власний нікнейм завжди відомий з localStorage
+    if (index === this.myIndexVal) return this.gameService.getNickname() || `Гравець ${index + 1}`;
+    return `Гравець ${index + 1}`;
   }
 
   get dayMessages() { return this.gameData?.dayMessages ?? []; }
