@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { GameService } from '../../services/game.service';
 
 type GameMode = 'Classic' | 'Extended' | 'Custom';
 
@@ -78,20 +79,6 @@ interface ModeOption {
             </div>
           </div>
 
-          <!-- Privacy Toggle -->
-          <div class="flex items-center justify-between bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-4">
-            <div>
-              <p class="text-sm font-bold text-white">Приватна гра</p>
-              <p class="text-xs text-white/40 mt-0.5">Лише з посиланням</p>
-            </div>
-            <button (click)="isPrivate.set(!isPrivate())"
-              class="w-12 h-7 rounded-full transition-all relative shrink-0"
-              [class]="isPrivate() ? 'bg-gradient-to-r from-violet-600 to-indigo-600' : 'bg-white/10'">
-              <span class="absolute top-0.5 w-6 h-6 bg-white rounded-full transition-transform shadow-md"
-                [class]="isPrivate() ? 'translate-x-5' : 'translate-x-0.5'"></span>
-            </button>
-          </div>
-
           <!-- Summary -->
           <div class="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4 space-y-3">
             <p class="text-[10px] text-white/30 uppercase tracking-[0.2em]">Підсумок</p>
@@ -104,13 +91,6 @@ interface ModeOption {
               <span class="text-sm text-white/50">Макс. гравців</span>
               <span class="text-sm font-semibold text-white">{{ playerLimit() }}</span>
             </div>
-            <div class="h-px bg-white/[0.06]"></div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-white/50">Видимість</span>
-              <span class="text-sm font-semibold" [class]="isPrivate() ? 'text-violet-400' : 'text-emerald-400'">
-                {{ isPrivate() ? '🔒 Приватна' : '🌐 Публічна' }}
-              </span>
-            </div>
           </div>
 
         </div>
@@ -118,9 +98,9 @@ interface ModeOption {
         <!-- Create Button (fixed) -->
         <div class="fixed bottom-0 left-0 right-0 px-5 py-5 bg-[#0b0b17]/90 backdrop-blur-xl border-t border-white/[0.06]">
           <div class="max-w-md mx-auto">
-            <button (click)="create()"
-              class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-base font-black py-4 rounded-2xl shadow-xl shadow-violet-900/40 transition-transform active:scale-[0.98]">
-              Створити гру
+            <button (click)="create()" [disabled]="loading()"
+              class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-base font-black py-4 rounded-2xl shadow-xl shadow-violet-900/40 transition-transform active:scale-[0.98] disabled:opacity-50">
+              {{ loading() ? 'Створення...' : 'Створити гру' }}
             </button>
           </div>
         </div>
@@ -131,21 +111,28 @@ interface ModeOption {
 })
 export class CreateGameComponent {
   modeOptions: ModeOption[] = [
-    { value: 'Classic',  label: 'Класик',    icon: '⚔️', desc: 'Класична Мафія з детективом та лікарем' },
+    { value: 'Classic',  label: 'Класик',    icon: '⚔️', desc: 'Класична Мафія · мафія, детектив, лікар · від 5 гравців' },
     { value: 'Extended', label: 'Розширена', icon: '🎭', desc: 'Більше ролей та складніша механіка' },
     { value: 'Custom',   label: 'Власна',    icon: '⚙️', desc: 'Налаштовуй ролі повністю вручну' },
   ];
 
   selectedMode = signal<GameMode>('Classic');
   playerLimit = signal(8);
-  isPrivate = signal(false);
+  loading = signal(false);
 
-  constructor(private router: Router) {}
+  constructor(private gameService: GameService, private router: Router) {}
 
   modeLabel(mode: GameMode): string {
     return this.modeOptions.find(o => o.value === mode)?.label ?? mode;
   }
 
   back() { this.router.navigate(['/home']); }
-  create() { this.router.navigate(['/gameplay']); }
+
+  create() {
+    this.loading.set(true);
+    this.gameService.createGame(this.selectedMode(), this.playerLimit()).subscribe({
+      next: (game) => this.router.navigate(['/gameplay', game._id]),
+      error: () => this.loading.set(false),
+    });
+  }
 }

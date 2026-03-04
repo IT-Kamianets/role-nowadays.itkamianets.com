@@ -1,8 +1,10 @@
 export interface Game {
-  id: string;
-  mode: 'Classic' | 'Extended' | 'Custom';
-  players: number;
+  _id: string;
+  mode: string;
+  creator: string;
+  status: 'lobby' | 'running' | 'finished' | 'canceled';
+  players: string[];
   maxPlayers: number;
-  status: 'waiting' | 'in_progress';
-  isPrivate: boolean;
+  pass: number;
+  data: Record<string, any>;
 }

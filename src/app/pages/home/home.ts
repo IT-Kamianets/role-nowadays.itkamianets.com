@@ -1,11 +1,13 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { MockGameService } from '../../services/mock-game.service';
+import { interval, Subscription } from 'rxjs';
+import { startWith, switchMap } from 'rxjs/operators';
+import { GameService } from '../../services/game.service';
 import { GameCardComponent } from '../../components/game-card/game-card';
 import { Game } from '../../models/game.model';
 
-type ModeFilter = 'Classic' | 'Extended' | 'Custom' | null;
+type ModeFilter = string | null;
 
 @Component({
   selector: 'app-home',
@@ -50,7 +52,7 @@ type ModeFilter = 'Classic' | 'Extended' | 'Custom' | null;
           @if (filteredGames().length === 0) {
             <div class="text-center text-white/25 py-20 text-sm">Ігор не знайдено</div>
           }
-          @for (game of filteredGames(); track game.id) {
+          @for (game of filteredGames(); track game._id) {
             <app-game-card [game]="game" (join)="joinGame($event)" />
           }
         </main>
@@ -59,8 +61,9 @@ type ModeFilter = 'Classic' | 'Extended' | 'Custom' | null;
     </div>
   `,
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit, OnDestroy {
   activeFilter = signal<ModeFilter>(null);
+  allGames = signal<Game[]>([]);
 
   filterTabs: { label: string; value: ModeFilter }[] = [
     { label: 'Всі',      value: null },
@@ -69,11 +72,31 @@ export class HomeComponent {
     { label: 'Власна',   value: 'Custom' },
   ];
 
-  filteredGames = computed(() => this.gameService.getGamesByMode(this.activeFilter()));
+  filteredGames = computed(() => {
+    const filter = this.activeFilter();
+    const games = this.allGames().filter(g => g.status === 'lobby');
+    return filter ? games.filter(g => g.mode === filter) : games;
+  });
 
-  constructor(private gameService: MockGameService, private router: Router) {}
+  private pollSub?: Subscription;
+
+  constructor(private gameService: GameService, private router: Router) {}
+
+  ngOnInit() {
+    this.pollSub = interval(5000).pipe(
+      startWith(0),
+      switchMap(() => this.gameService.getGames()),
+    ).subscribe(games => this.allGames.set(games));
+  }
+
+  ngOnDestroy() { this.pollSub?.unsubscribe(); }
 
   setFilter(mode: ModeFilter) { this.activeFilter.set(mode); }
   createGame() { this.router.navigate(['/create']); }
-  joinGame(game: Game) { this.router.navigate(['/gameplay']); }
+
+  joinGame(game: Game) {
+    this.gameService.joinGame(game._id).subscribe(() => {
+      this.router.navigate(['/gameplay', game._id]);
+    });
+  }
 }

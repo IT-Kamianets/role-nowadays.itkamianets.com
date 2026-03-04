@@ -16,32 +16,29 @@ import { Game } from '../../models/game.model';
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-1.5 mb-2">
             <span class="text-sm font-bold text-white">{{ modeLabels[game.mode] }}</span>
-            @if (game.isPrivate) {
-              <span class="text-[10px] bg-white/[0.08] text-white/40 px-2 py-0.5 rounded-full">🔒 Приватна</span>
-            }
             <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold border"
-              [class]="game.status === 'waiting'
+              [class]="game.status === 'lobby'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                 : 'bg-amber-500/10 text-amber-400 border-amber-500/20'">
-              {{ game.status === 'waiting' ? 'Відкрита' : 'Триває' }}
+              {{ game.status === 'lobby' ? 'Відкрита' : 'Триває' }}
             </span>
           </div>
           <!-- Player count + progress bar -->
           <div class="flex items-center gap-2">
-            <span class="text-xs text-white/40 shrink-0">{{ game.players }} / {{ game.maxPlayers }}</span>
+            <span class="text-xs text-white/40 shrink-0">{{ game.players.length }} / {{ game.maxPlayers }}</span>
             <div class="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
               <div class="h-full rounded-full transition-all"
-                [class]="game.status === 'waiting'
+                [class]="game.status === 'lobby'
                   ? 'bg-gradient-to-r from-violet-500 to-indigo-500'
                   : 'bg-gradient-to-r from-amber-500 to-orange-500'"
-                [style.width]="(game.players / game.maxPlayers * 100) + '%'">
+                [style.width]="(game.players.length / game.maxPlayers * 100) + '%'">
               </div>
             </div>
           </div>
         </div>
 
         <!-- Action -->
-        @if (game.status === 'waiting') {
+        @if (game.status === 'lobby' && game.players.length < game.maxPlayers) {
           <button (click)="join.emit(game)"
             class="shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg shadow-violet-900/30 transition-all active:scale-95">
             Приєднатись
