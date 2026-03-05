@@ -80,6 +80,9 @@ import { Game } from '../../models/game.model';
                 class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black py-3.5 rounded-xl disabled:opacity-40 active:scale-[0.97] transition-all shadow-lg shadow-violet-900/30">
                 {{ loading() ? 'Запуск...' : '⚔️ Розподілити ролі та почати' }}
               </button>
+              @if (errorMsg()) {
+                <p class="text-xs text-red-400 text-center mt-2">{{ errorMsg() }}</p>
+              }
             </div>
           }
 
@@ -438,6 +441,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   hasVoted = signal(false);
   daySecondsLeft = signal(60);
   loading = signal(false);
+  errorMsg = signal<string | null>(null);
 
   myIndexVal = -1;
   dayChatText = '';
@@ -592,9 +596,15 @@ export class GameplayComponent implements OnInit, OnDestroy {
     if (!g) return;
     const data = this.classicMafia.initGameData(g.players.length);
     this.loading.set(true);
+    this.errorMsg.set(null);
     this.gameService.updateGame(this.gameId, { status: 'running', data }).subscribe({
       next: game => { this.currentGame.set(game); this.loading.set(false); },
-      error: () => this.loading.set(false),
+      error: (err) => {
+        this.loading.set(false);
+        const msg = err?.error?.message ?? err?.message ?? `HTTP ${err?.status ?? '?'}`;
+        this.errorMsg.set(msg);
+        console.error('[startGame]', err);
+      },
     });
   }
 
