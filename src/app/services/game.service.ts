@@ -5,7 +5,7 @@ import { tap } from 'rxjs/operators';
 import { Game } from '../models/game.model';
 
 const BASE = 'https://api.webart.work/api/rnd';
-const OPTIONS = {};
+const OPTIONS = { withCredentials: true };
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
@@ -24,20 +24,22 @@ export class GameService {
   }
 
   createGame(mode: string, maxPlayers: number): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/create`, { mode, maxPlayers, nickname: this.getNickname() }, OPTIONS).pipe(
-      tap(game => this.setCreator(game._id, 0)),
-    );
+    return this.http
+      .post<Game>(`${BASE}/create`, { mode, maxPlayers, nickname: this.getNickname() }, OPTIONS)
+      .pipe(tap((game) => this.setCreator(game._id, 0)));
   }
 
   joinGame(id: string): Observable<Game | false> {
-    return this.http.post<Game | false>(`${BASE}/join`, { _id: id, nickname: this.getNickname() }, OPTIONS).pipe(
-      tap(result => {
-        if (result && typeof result === 'object' && '_id' in result) {
-          const game = result as Game;
-          this.setPlayerIndex(game._id, game.players.length - 1);
-        }
-      }),
-    );
+    return this.http
+      .post<Game | false>(`${BASE}/join`, { _id: id, nickname: this.getNickname() }, OPTIONS)
+      .pipe(
+        tap((result) => {
+          if (result && typeof result === 'object' && '_id' in result) {
+            const game = result as Game;
+            this.setPlayerIndex(game._id, game.players.length - 1);
+          }
+        }),
+      );
   }
 
   updateGame(id: string, fields: Record<string, any>): Observable<Game> {
