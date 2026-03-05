@@ -73,17 +73,19 @@ import { Game } from '../../models/game.model';
               </div>
             </div>
 
-            <!-- Start button — visible to all players -->
-            <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-3">
-              <p class="text-xs text-white/40">Почніть гру коли збереться достатньо гравців (мін. 2).</p>
-              <button (click)="startGame()" [disabled]="loading() || (currentGame()?.players?.length ?? 0) < 2"
-                class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black py-3.5 rounded-xl disabled:opacity-40 active:scale-[0.97] transition-all shadow-lg shadow-violet-900/30">
-                {{ loading() ? 'Запуск...' : '⚔️ Розподілити ролі та почати' }}
-              </button>
-              @if (errorMsg()) {
-                <p class="text-xs text-red-400 text-center mt-2">{{ errorMsg() }}</p>
-              }
-            </div>
+            <!-- Start button — creator only -->
+            @if (isCreator) {
+              <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-3">
+                <p class="text-xs text-white/40">Почніть гру коли збереться достатньо гравців (мін. 2).</p>
+                <button (click)="startGame()" [disabled]="loading() || (currentGame()?.players?.length ?? 0) < 2"
+                  class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black py-3.5 rounded-xl disabled:opacity-40 active:scale-[0.97] transition-all shadow-lg shadow-violet-900/30">
+                  {{ loading() ? 'Запуск...' : '⚔️ Розподілити ролі та почати' }}
+                </button>
+                @if (errorMsg()) {
+                  <p class="text-xs text-red-400 text-center mt-2">{{ errorMsg() }}</p>
+                }
+              </div>
+            }
           }
 
           <!-- ═══════════════════════════════════════════════════ NIGHT -->
@@ -466,17 +468,17 @@ export class GameplayComponent implements OnInit, OnDestroy {
     if (this.gameId) {
       this.pollSub = interval(3000).pipe(
         startWith(0),
-        switchMap(() => this.gameService.getGames()),
-      ).subscribe(games => {
-        const found = games.find(g => g._id === this.gameId) ?? null;
+        switchMap(() => this.gameService.getGame(this.gameId)),
+      ).subscribe(game => {
+        if (!game || typeof game !== 'object') return;
 
         const prevPhase = (this.currentGame()?.data as Partial<MafiaGameData>)?.phase;
-        const newPhase  = (found?.data as Partial<MafiaGameData>)?.phase;
+        const newPhase  = (game.data as Partial<MafiaGameData>)?.phase;
         if (prevPhase === 'voting' && newPhase !== 'voting') {
           this.hasVoted.set(false);
           this.myVoteTarget.set(null);
         }
-        this.currentGame.set(found);
+        this.currentGame.set(game);
       });
     }
 
@@ -593,7 +595,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.errorMsg.set(null);
     this.gameService.updateGame(this.gameId, { status: 'running', data }).subscribe({
-      next: game => { this.currentGame.set(game); this.loading.set(false); },
+      next: game => { if (game && typeof game === 'object') this.currentGame.set(game); this.loading.set(false); },
       error: (err) => {
         this.loading.set(false);
         const msg = err?.error?.message ?? err?.message ?? `HTTP ${err?.status ?? '?'}`;
@@ -639,10 +641,11 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   triggerDayToVoting() {
+    if (!this.isCreator) { this.dayTransitionSent = false; return; }
     const d = this.gameData;
     if (!d || d.phase !== 'day') { this.dayTransitionSent = false; return; }
     this.gameService.updateGame(this.gameId, { data: { ...d, phase: 'voting', phaseStartedAt: Date.now() } }).subscribe({
-      next: game => this.currentGame.set(game),
+      next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
       error: () => { this.dayTransitionSent = false; },
     });
   }
@@ -652,7 +655,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.hasVoted.set(true);
     this.myVoteTarget.set(targetIndex);
     this.gameService.submitVote(this.gameId, this.myIndexVal, targetIndex).subscribe({
-      next: game => this.currentGame.set(game),
+      next: game => {
+        if (!game || typeof game !== 'object') return;
+        this.currentGame.set(game);
+      },
       error: () => { this.hasVoted.set(false); this.myVoteTarget.set(null); },
     });
   }
@@ -708,6 +714,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   get nightTargets() {
     return this.alivePlayers.filter(p => p.index !== this.myIndexVal);
+  }
+
+  get isCreator(): boolean {
+    return this.gameService.isCreator(this.gameId);
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────

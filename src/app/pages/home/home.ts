@@ -87,9 +87,9 @@ type ModeFilter = string | null;
             maxlength="30"
             class="w-full bg-white/[0.06] border border-white/[0.10] rounded-2xl px-4 py-3.5 text-white text-base placeholder-white/25 outline-none focus:border-violet-500/60 focus:bg-white/[0.08] transition-all" />
           <button (click)="saveNickname()"
-            [disabled]="nicknameValue.trim().length < 2"
+            [disabled]="nicknameValue.trim().length < 2 || tokenLoading()"
             class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black py-3.5 rounded-2xl shadow-lg shadow-violet-900/30 disabled:opacity-40 transition-all active:scale-[0.98]">
-            Зберегти
+            {{ tokenLoading() ? 'Підключення...' : 'Зберегти' }}
           </button>
         </div>
       </div>
@@ -101,6 +101,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   allGames = signal<Game[]>([]);
   showModal = signal(false);
   nickname = signal('');
+  tokenLoading = signal(false);
   nicknameValue = '';
 
   filterTabs: { label: string; value: ModeFilter }[] = [
@@ -135,7 +136,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.pollSub = interval(5000).pipe(
       startWith(0),
       switchMap(() => this.gameService.getGames()),
-    ).subscribe(games => this.allGames.set(games));
+    ).subscribe(games => {
+      if (!Array.isArray(games)) return;
+      this.allGames.set(games);
+    });
   }
 
   ngOnDestroy() { this.pollSub?.unsubscribe(); }
@@ -150,11 +154,19 @@ export class HomeComponent implements OnInit, OnDestroy {
   saveNickname() {
     const name = this.nicknameValue.trim();
     if (name.length < 2) return;
+    this.tokenLoading.set(true);
     this.gameService.setNickname(name);
     this.nickname.set(name);
-    this.gameService.initToken(name).subscribe(() => {
-      this.showModal.set(false);
-      if (!this.pollSub) this.startPolling();
+    this.gameService.initToken(name).subscribe({
+      next: () => {
+        this.tokenLoading.set(false);
+        this.showModal.set(false);
+        if (!this.pollSub) this.startPolling();
+      },
+      error: () => {
+        this.tokenLoading.set(false);
+        this.nickname.set('');
+      },
     });
   }
 
