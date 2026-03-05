@@ -564,12 +564,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   playerName(index: number): string {
-    // Якщо сервер повернув nicknames — використовуємо
-    const fromServer = this.currentGame()?.nicknames?.[index];
-    if (fromServer) return fromServer;
-    // Власний нікнейм завжди відомий з localStorage
-    if (index === this.myIndexVal) return this.gameService.getNickname() || `Гравець ${index + 1}`;
-    return `Гравець ${index + 1}`;
+    return this.currentGame()?.players?.[index]?.name || `Гравець ${index + 1}`;
   }
 
   get dayMessages() { return this.gameData?.dayMessages ?? []; }

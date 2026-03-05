@@ -122,13 +122,16 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const saved = this.gameService.getNickname();
-    if (saved) {
+    if (saved && this.gameService.isAuthenticated()) {
       this.nickname.set(saved);
+      this.startPolling();
     } else {
-      this.nicknameValue = '';
+      this.nicknameValue = saved;
       this.showModal.set(true);
     }
+  }
 
+  private startPolling() {
     this.pollSub = interval(5000).pipe(
       startWith(0),
       switchMap(() => this.gameService.getGames()),
@@ -149,7 +152,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (name.length < 2) return;
     this.gameService.setNickname(name);
     this.nickname.set(name);
-    this.showModal.set(false);
+    this.gameService.initToken(name).subscribe(() => {
+      this.showModal.set(false);
+      if (!this.pollSub) this.startPolling();
+    });
   }
 
   onBackdropClick(e: MouseEvent) {

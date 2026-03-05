@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 import { Game } from '../models/game.model';
 
 const BASE = 'https://api.webart.work/api/rnd';
@@ -10,23 +10,30 @@ const OPTIONS = { headers: { token: '' } };
 @Injectable({ providedIn: 'root' })
 export class GameService {
   constructor(private http: HttpClient) {
-    this.http
-      .post<string>(`${BASE}/token`, {
-        name: 'test',
-      })
-      .subscribe((token) => {
+    const token = localStorage.getItem('token');
+    if (token) OPTIONS.headers.token = token;
+  }
+
+  initToken(name: string): Observable<void> {
+    return this.http.post<string>(`${BASE}/token`, { name }).pipe(
+      tap((token) => {
+        localStorage.setItem('token', token);
         OPTIONS.headers.token = token;
+      }),
+      map(() => void 0),
+    );
+  }
 
-        this.http.get<Game[]>(`${BASE}/games`, OPTIONS).subscribe((games) => {
-          console.log(games);
-        });
-
-        this.http.post<Game>(`${BASE}/create`, {}, OPTIONS).subscribe((game) => {});
-      });
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
   }
 
   getGames(): Observable<Game[]> {
     return this.http.get<Game[]>(`${BASE}/games`, OPTIONS);
+  }
+
+  getGame(id: string): Observable<Game> {
+    return this.http.get<Game>(`${BASE}/game/${id}`, OPTIONS);
   }
 
   getNickname(): string {
@@ -39,13 +46,13 @@ export class GameService {
 
   createGame(mode: string, maxPlayers: number): Observable<Game> {
     return this.http
-      .post<Game>(`${BASE}/create`, { mode, maxPlayers, nickname: this.getNickname() }, OPTIONS)
+      .post<Game>(`${BASE}/create`, { mode, maxPlayers }, OPTIONS)
       .pipe(tap((game) => this.setCreator(game._id, 0)));
   }
 
   joinGame(id: string): Observable<Game | false> {
     return this.http
-      .post<Game | false>(`${BASE}/join`, { _id: id, nickname: this.getNickname() }, OPTIONS)
+      .post<Game | false>(`${BASE}/join`, { _id: id }, OPTIONS)
       .pipe(
         tap((result) => {
           if (result && typeof result === 'object' && '_id' in result) {
