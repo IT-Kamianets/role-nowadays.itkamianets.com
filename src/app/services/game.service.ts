@@ -5,7 +5,7 @@ import { tap } from 'rxjs/operators';
 import { Game } from '../models/game.model';
 
 const BASE = 'https://api.webart.work/api/rnd';
-const OPTIONS = { withCredentials: true };
+const OPTIONS = {};
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
