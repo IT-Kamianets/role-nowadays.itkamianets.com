@@ -607,7 +607,27 @@ export class GameplayComponent implements OnInit, OnDestroy {
     };
     const field = roleToField[role];
     if (!field) return;
-    const updatedData: MafiaGameData = { ...d, night: { ...d.night, [field]: target } };
+
+    const updatedNight = { ...d.night, [field]: target };
+    let updatedData: MafiaGameData = { ...d, night: updatedNight };
+
+    // Check if all alive role players have submitted their actions
+    const hasMafia      = d.alive.some(i => d.roles[String(i)] === 'Mafia');
+    const hasDoctor     = d.alive.some(i => d.roles[String(i)] === 'Doctor');
+    const hasDetective  = d.alive.some(i => d.roles[String(i)] === 'Detective');
+    const allDone =
+      (!hasMafia     || updatedNight.mafiaTarget     !== null) &&
+      (!hasDoctor    || updatedNight.doctorTarget     !== null) &&
+      (!hasDetective || updatedNight.detectiveTarget  !== null);
+
+    if (allDone) {
+      const { data: resolved } = this.classicMafia.resolveNight(updatedData);
+      const winner = this.classicMafia.checkWin(resolved);
+      updatedData = winner
+        ? { ...resolved, phase: 'finished', winner }
+        : { ...resolved, phaseStartedAt: Date.now() };
+    }
+
     this.gameService.updateGame(this.gameId, { data: updatedData }).subscribe({
       next: game => this.currentGame.set(game),
     });

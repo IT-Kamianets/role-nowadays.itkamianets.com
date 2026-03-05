@@ -30,14 +30,19 @@ export class ClassicMafiaService {
   };
 
   assignRoles(playerCount: number): string[] {
-    let mafiaCount: number;
-    let detectiveCount: number;
-    const doctorCount = 1;
+    let mafiaCount = playerCount <= 6 ? 1 : playerCount <= 9 ? 2 : 3;
+    let detectiveCount = playerCount >= 14 ? 2 : 1;
+    let doctorCount = 1;
 
-    if (playerCount <= 6)       { mafiaCount = 1; detectiveCount = 1; }
-    else if (playerCount <= 9)  { mafiaCount = 2; detectiveCount = 1; }
-    else if (playerCount <= 12) { mafiaCount = 3; detectiveCount = 1; }
-    else                        { mafiaCount = 3; detectiveCount = 2; }
+    // Ensure special roles don't exceed player count
+    const specialTotal = mafiaCount + detectiveCount + doctorCount;
+    if (specialTotal > playerCount) {
+      // Drop Detective first, then Doctor
+      detectiveCount = Math.max(0, playerCount - mafiaCount - doctorCount);
+      if (mafiaCount + doctorCount > playerCount) {
+        doctorCount = Math.max(0, playerCount - mafiaCount);
+      }
+    }
 
     const villagerCount = Math.max(0, playerCount - mafiaCount - detectiveCount - doctorCount);
     const roles: string[] = [
