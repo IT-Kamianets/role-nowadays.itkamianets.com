@@ -498,6 +498,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   nightChatText = '';
 
   private gameId = '';
+  private roleRevealShown = false;
   private pollSub?: Subscription;
   private msgPollSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
@@ -529,9 +530,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
           this.myVoteTarget.set(null);
         }
         this.currentGame.set(game);
-        if (prevStatus === 'lobby' && newPhase === 'night') {
+        if (newPhase === 'night') {
           const round = (game.data as Partial<MafiaGameData>)?.round;
-          if (round === 1 && this.myIndexVal >= 0) {
+          if (round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
+            this.roleRevealShown = true;
             this.showRoleReveal.set(true);
             this.roleRevealed.set(false);
           }
@@ -660,7 +662,19 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.errorMsg.set(null);
     this.gameService.updateGame(this.gameId, { status: 'running', data }).subscribe({
-      next: game => { if (game && typeof game === 'object') this.currentGame.set(game); this.loading.set(false); },
+      next: game => {
+        if (game && typeof game === 'object') {
+          this.currentGame.set(game);
+          const newPhase = (game.data as Partial<MafiaGameData>)?.phase;
+          const round = (game.data as Partial<MafiaGameData>)?.round;
+          if (newPhase === 'night' && round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
+            this.roleRevealShown = true;
+            this.showRoleReveal.set(true);
+            this.roleRevealed.set(false);
+          }
+        }
+        this.loading.set(false);
+      },
       error: (err) => {
         this.loading.set(false);
         const msg = err?.error?.message ?? err?.message ?? `HTTP ${err?.status ?? '?'}`;
