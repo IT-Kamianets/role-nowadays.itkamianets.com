@@ -27,7 +27,7 @@ import { Game } from '../../models/game.model';
             <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-25"
               [class]="revealGlowColor(myRole)"></div>
             @if (myRole === 'Doctor') {
-              <img src="assets/doctor-role.gif" alt="Doctor" class="w-44 object-contain rounded-2xl mx-auto mb-6 relative" />
+              <img src="/doctor-role.gif" alt="Doctor" class="w-48 object-contain rounded-2xl mx-auto mb-6 relative" />
             } @else {
               <div class="text-8xl mb-6 relative">{{ revealRoleIcon(myRole) }}</div>
             }
@@ -131,25 +131,34 @@ import { Game } from '../../models/game.model';
 
             <!-- Role card -->
             @if (myRoleDef) {
-              <div class="relative overflow-hidden rounded-2xl p-5 border" [class]="roleCardBg(myRoleDef.team)">
-                <div class="absolute -top-8 -right-8 w-28 h-28 rounded-full blur-3xl opacity-20"
-                  [class]="myRoleDef.team === 'mafia' ? 'bg-red-500' : 'bg-blue-500'"></div>
-                <p class="text-[10px] uppercase tracking-[0.2em] mb-3" [class]="teamAccent(myRoleDef.team)">Ваша роль</p>
-                <div class="flex items-start gap-4">
-                  @if (myRole === 'Doctor') {
-                    <img src="assets/doctor-role.gif" alt="Doctor" class="w-14 object-contain rounded-xl shrink-0" />
-                  } @else {
-                    <div class="text-4xl shrink-0 mt-0.5">{{ roleIcon(myRoleDef.team) }}</div>
-                  }
-                  <div class="flex-1 min-w-0">
-                    <h2 class="text-2xl font-black text-white mb-1.5 leading-tight">{{ myRole }}</h2>
+              @if (myRole === 'Doctor') {
+                <div class="relative overflow-hidden rounded-2xl border" [class]="roleCardBg(myRoleDef.team)">
+                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold px-5 pt-4 pb-3" [class]="teamAccent(myRoleDef.team)">Ваша роль</p>
+                  <img src="/card-doctor.jpg" alt="Doctor" class="w-full object-contain" />
+                  <div class="px-5 py-4">
                     <span class="inline-block text-[10px] px-2.5 py-1 rounded-full font-bold mb-2 border" [class]="teamBadge(myRoleDef.team)">
                       {{ teamLabel(myRoleDef.team) }}
                     </span>
                     <p class="text-sm text-white/60 leading-relaxed">{{ myRoleDef.description }}</p>
                   </div>
                 </div>
-              </div>
+              } @else {
+                <div class="relative overflow-hidden rounded-2xl p-5 border" [class]="roleCardBg(myRoleDef.team)">
+                  <div class="absolute -top-8 -right-8 w-28 h-28 rounded-full blur-3xl opacity-20"
+                    [class]="myRoleDef.team === 'mafia' ? 'bg-red-500' : 'bg-blue-500'"></div>
+                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold mb-3" [class]="teamAccent(myRoleDef.team)">Ваша роль</p>
+                  <div class="flex items-start gap-4">
+                    <div class="text-4xl shrink-0 mt-0.5">{{ roleIcon(myRoleDef.team) }}</div>
+                    <div class="flex-1 min-w-0">
+                      <h2 class="text-2xl font-black text-white mb-1.5 leading-tight">{{ myRole }}</h2>
+                      <span class="inline-block text-[10px] px-2.5 py-1 rounded-full font-bold mb-2 border" [class]="teamBadge(myRoleDef.team)">
+                        {{ teamLabel(myRoleDef.team) }}
+                      </span>
+                      <p class="text-sm text-white/60 leading-relaxed">{{ myRoleDef.description }}</p>
+                    </div>
+                  </div>
+                </div>
+              }
             }
 
             <!-- Villager: sleeping -->
