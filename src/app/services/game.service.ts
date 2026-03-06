@@ -75,12 +75,12 @@ export class GameService {
     return this.http.post<Game>(`${BASE}/vote`, { _id: gameId, voterIndex, targetIndex }, OPTIONS);
   }
 
-  sendDayMessage(gameId: string, text: string): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/chat/day`, { _id: gameId, text }, OPTIONS);
+  sendMessage(gameId: string, text: string, type: 'day' | 'night'): Observable<any> {
+    return this.http.post<any>(`${BASE}/message/create`, { _id: gameId, text, data: { type } }, OPTIONS);
   }
 
-  sendNightMessage(gameId: string, text: string): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/chat/night`, { _id: gameId, text }, OPTIONS);
+  getMessages(gameId: string): Observable<any[]> {
+    return this.http.post<any[]>(`${BASE}/message/get`, { _id: gameId }, OPTIONS);
   }
 
   setCreator(gameId: string, playerIndex: number): void {

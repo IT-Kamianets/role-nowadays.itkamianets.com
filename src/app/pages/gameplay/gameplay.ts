@@ -163,10 +163,7 @@ import { Game } from '../../models/game.model';
                   <div class="max-h-40 overflow-y-auto p-3 space-y-2 min-h-[40px]">
                     @for (msg of nightMessages; track $index) {
                       <div class="text-xs">
-                        <span class="font-bold text-red-400">{{ playerName(msg.sender) }}</span>
-                        @if (msg.sender === myIndexVal) {
-                          <span class="text-[10px] text-red-300/60 ml-1">(Ви)</span>
-                        }
+                        <span class="font-bold text-red-400">{{ msg.creator?.name }}</span>
                         <span class="text-white/60 ml-1">{{ msg.text }}</span>
                       </div>
                     }
@@ -278,10 +275,7 @@ import { Game } from '../../models/game.model';
                 <div class="max-h-48 overflow-y-auto p-3 space-y-2 min-h-[48px]">
                   @for (msg of dayMessages; track $index) {
                     <div class="text-xs">
-                      <span class="font-bold text-violet-400">{{ playerName(msg.sender) }}</span>
-                      @if (msg.sender === myIndexVal) {
-                        <span class="text-[10px] text-violet-300/60 ml-1">(Ви)</span>
-                      }
+                      <span class="font-bold text-violet-400">{{ msg.creator?.name }}</span>
                       <span class="text-white/60 ml-1">{{ msg.text }}</span>
                     </div>
                   }
@@ -444,6 +438,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   daySecondsLeft = signal(60);
   loading = signal(false);
   errorMsg = signal<string | null>(null);
+  allMessages = signal<any[]>([]);
 
   myIndexVal = -1;
   dayChatText = '';
@@ -451,6 +446,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   private gameId = '';
   private pollSub?: Subscription;
+  private msgPollSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
   private dayTransitionSent = false;
 
@@ -480,6 +476,13 @@ export class GameplayComponent implements OnInit, OnDestroy {
         }
         this.currentGame.set(game);
       });
+
+      this.msgPollSub = interval(3000).pipe(
+        startWith(0),
+        switchMap(() => this.gameService.getMessages(this.gameId).pipe(catchError(() => EMPTY))),
+      ).subscribe(msgs => {
+        if (Array.isArray(msgs)) this.allMessages.set(msgs);
+      });
     }
 
     // 1-second interval: update day countdown + trigger day→voting transition
@@ -504,6 +507,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
+    this.msgPollSub?.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
   }
 
@@ -569,8 +573,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
     return this.currentGame()?.players?.[index]?.name || `Гравець ${index + 1}`;
   }
 
-  get dayMessages() { return this.gameData?.dayMessages ?? []; }
-  get nightMessages() { return this.gameData?.nightMessages ?? []; }
+  get dayMessages() { return this.allMessages().filter(m => m?.data?.type === 'day'); }
+  get nightMessages() { return this.allMessages().filter(m => m?.data?.type === 'night'); }
 
   get voteCount(): number {
     const d = this.gameData;
@@ -646,8 +650,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const text = this.dayChatText.trim();
     if (!text) return;
     this.dayChatText = '';
-    this.gameService.sendDayMessage(this.gameId, text).subscribe({
-      next: game => this.currentGame.set(game),
+    this.gameService.sendMessage(this.gameId, text, 'day').subscribe({
+      next: msg => { if (msg) this.allMessages.update(msgs => [...msgs, msg]); },
     });
   }
 
@@ -655,8 +659,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const text = this.nightChatText.trim();
     if (!text) return;
     this.nightChatText = '';
-    this.gameService.sendNightMessage(this.gameId, text).subscribe({
-      next: game => this.currentGame.set(game),
+    this.gameService.sendMessage(this.gameId, text, 'night').subscribe({
+      next: msg => { if (msg) this.allMessages.update(msgs => [...msgs, msg]); },
     });
   }
 
