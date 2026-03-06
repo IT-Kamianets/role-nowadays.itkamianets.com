@@ -13,6 +13,32 @@ import { Game } from '../../models/game.model';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
+    <!-- Role Reveal Overlay -->
+    @if (showRoleReveal() && myRoleDef && myRole) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0b17] px-6"
+        [class]="roleRevealed() ? 'pointer-events-none' : 'cursor-pointer'"
+        (click)="revealRole()">
+        <div class="w-full transition-all duration-[600ms] ease-in-out"
+          [class]="roleRevealed()
+            ? 'max-w-[280px] scale-[0.55] opacity-0'
+            : 'max-w-md scale-100 opacity-100'">
+          <div class="relative overflow-hidden rounded-3xl p-8 border-2 text-center"
+            [class]="revealCardBg(myRole)">
+            <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-25"
+              [class]="revealGlowColor(myRole)"></div>
+            <div class="text-8xl mb-6 relative">{{ revealRoleIcon(myRole) }}</div>
+            <h2 class="text-4xl font-black text-white mb-3 leading-tight relative">{{ myRole }}</h2>
+            <span class="inline-block text-xs px-3 py-1.5 rounded-full font-bold mb-4 border relative"
+              [class]="revealBadge(myRole)">
+              {{ teamLabel(myRoleDef.team) }}
+            </span>
+            <p class="text-sm text-white/60 leading-relaxed mb-8 relative">{{ myRoleDef.description }}</p>
+            <p class="text-xs text-white/30 animate-pulse relative">Торкніться щоб продовжити</p>
+          </div>
+        </div>
+      </div>
+    }
+
     <div class="min-h-screen bg-[#0b0b17]">
       <div class="max-w-md mx-auto">
 
@@ -439,6 +465,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
   loading = signal(false);
   errorMsg = signal<string | null>(null);
   allMessages = signal<any[]>([]);
+  showRoleReveal = signal(false);
+  roleRevealed = signal(false);
 
   myIndexVal = -1;
   dayChatText = '';
@@ -468,6 +496,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       ).subscribe(game => {
         if (!game || typeof game !== 'object') return;
 
+        const prevStatus = this.currentGame()?.status;
         const prevPhase = (this.currentGame()?.data as Partial<MafiaGameData>)?.phase;
         const newPhase  = (game.data as Partial<MafiaGameData>)?.phase;
         if (prevPhase === 'voting' && newPhase !== 'voting') {
@@ -475,6 +504,13 @@ export class GameplayComponent implements OnInit, OnDestroy {
           this.myVoteTarget.set(null);
         }
         this.currentGame.set(game);
+        if (prevStatus === 'lobby' && newPhase === 'night') {
+          const round = (game.data as Partial<MafiaGameData>)?.round;
+          if (round === 1 && this.myIndexVal >= 0) {
+            this.showRoleReveal.set(true);
+            this.roleRevealed.set(false);
+          }
+        }
       });
 
       this.msgPollSub = interval(3000).pipe(
@@ -664,6 +700,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
     });
   }
 
+  revealRole() {
+    if (this.roleRevealed()) return;
+    this.roleRevealed.set(true);
+    setTimeout(() => this.showRoleReveal.set(false), 600);
+  }
+
   // ── Night action helpers ──────────────────────────────────────────────
 
   get hasSubmittedNightAction(): boolean {
@@ -731,5 +773,39 @@ export class GameplayComponent implements OnInit, OnDestroy {
     return team === 'mafia'
       ? 'bg-gradient-to-br from-red-950/70 to-rose-950/70 border-red-800/30'
       : 'bg-gradient-to-br from-blue-950/70 to-indigo-950/70 border-blue-800/30';
+  }
+
+  revealCardBg(role: string): string {
+    const map: Record<string, string> = {
+      Mafia:     'bg-gradient-to-br from-red-950 to-rose-950 border-red-600/40',
+      Doctor:    'bg-gradient-to-br from-green-950 to-emerald-950 border-green-600/40',
+      Detective: 'bg-gradient-to-br from-blue-950 to-indigo-950 border-blue-600/40',
+      Villager:  'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40',
+    };
+    return map[role] ?? 'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40';
+  }
+
+  revealRoleIcon(role: string): string {
+    const map: Record<string, string> = {
+      Mafia: '🔪', Doctor: '💊', Detective: '🔍', Villager: '🏘️',
+    };
+    return map[role] ?? '❓';
+  }
+
+  revealGlowColor(role: string): string {
+    const map: Record<string, string> = {
+      Mafia: 'bg-red-500', Doctor: 'bg-green-500', Detective: 'bg-blue-500', Villager: 'bg-slate-400',
+    };
+    return map[role] ?? 'bg-white';
+  }
+
+  revealBadge(role: string): string {
+    const map: Record<string, string> = {
+      Mafia:     'bg-red-500/20 text-red-300 border-red-500/40',
+      Doctor:    'bg-green-500/20 text-green-300 border-green-500/40',
+      Detective: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+      Villager:  'bg-slate-500/20 text-slate-300 border-slate-500/40',
+    };
+    return map[role] ?? 'bg-white/10 text-white/60 border-white/20';
   }
 }
