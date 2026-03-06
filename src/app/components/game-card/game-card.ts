@@ -7,44 +7,44 @@ import { Game } from '../../models/game.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="relative overflow-hidden rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm">
-      <!-- Left mode accent strip -->
-      <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" [class]="modeAccent[game.mode]"></div>
+    <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl overflow-hidden">
+      <!-- Mode header -->
+      <div class="px-4 py-3 flex items-center justify-between" [class]="modeHeaderBg[game.mode]">
+        <div class="flex items-center gap-2">
+          <span class="text-base">{{ modeIcon[game.mode] }}</span>
+          <span class="font-black uppercase tracking-wide text-sm text-white">{{ modeLabels[game.mode] }}</span>
+        </div>
+        <span class="bg-white/20 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded">
+          {{ game.status === 'lobby' ? 'Лобі' : 'Триває' }}
+        </span>
+      </div>
 
-      <div class="pl-5 pr-4 py-4 flex items-center gap-3">
-        <!-- Info -->
-        <div class="flex-1 min-w-0">
-          <div class="flex flex-wrap items-center gap-1.5 mb-2">
-            <span class="text-sm font-bold text-white">{{ modeLabels[game.mode] }}</span>
-            <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold border"
-              [class]="game.status === 'lobby'
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'">
-              {{ game.status === 'lobby' ? 'Відкрита' : 'Триває' }}
-            </span>
+      <!-- Body -->
+      <div class="px-4 pt-3 pb-4 space-y-3">
+        <!-- Players + progress bar -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40">Гравці</span>
+            <span class="text-xs font-bold text-white/60">{{ game.players.length }} / {{ game.maxPlayers }}</span>
           </div>
-          <!-- Player count + progress bar -->
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-white/40 shrink-0">{{ game.players.length }} / {{ game.maxPlayers }}</span>
-            <div class="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all"
-                [class]="game.status === 'lobby'
-                  ? 'bg-gradient-to-r from-violet-500 to-indigo-500'
-                  : 'bg-gradient-to-r from-amber-500 to-orange-500'"
-                [style.width]="(game.players.length / game.maxPlayers * 100) + '%'">
-              </div>
+          <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all" [class]="modeProgressBar[game.mode]"
+              [style.width]="(game.players.length / game.maxPlayers * 100) + '%'">
             </div>
           </div>
         </div>
 
-        <!-- Action -->
+        <!-- Join button -->
         @if (game.status === 'lobby' && game.players.length < game.maxPlayers) {
           <button (click)="join.emit(game)"
-            class="shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg shadow-violet-900/30 transition-all active:scale-95">
-            Приєднатись
+            class="w-full py-3 rounded-xl font-black text-sm uppercase text-white transition-all active:scale-95"
+            [class]="modeButtonBg[game.mode]">
+            Приєднатись →
           </button>
         } @else {
-          <span class="shrink-0 text-white/20 text-xs">Заповнена</span>
+          <div class="w-full py-3 rounded-xl text-center text-xs font-bold uppercase text-white/20 bg-white/[0.03]">
+            Заповнена
+          </div>
         }
       </div>
     </div>
@@ -60,9 +60,27 @@ export class GameCardComponent {
     Custom: 'Власна',
   };
 
-  readonly modeAccent: Record<string, string> = {
-    Classic:  'bg-blue-500',
+  readonly modeIcon: Record<string, string> = {
+    Classic:  '⚔️',
+    Extended: '🎭',
+    Custom:   '⚙️',
+  };
+
+  readonly modeHeaderBg: Record<string, string> = {
+    Classic:  'bg-red-600',
+    Extended: 'bg-violet-600',
+    Custom:   'bg-teal-600',
+  };
+
+  readonly modeProgressBar: Record<string, string> = {
+    Classic:  'bg-red-500',
     Extended: 'bg-violet-500',
-    Custom:   'bg-emerald-500',
+    Custom:   'bg-teal-500',
+  };
+
+  readonly modeButtonBg: Record<string, string> = {
+    Classic:  'bg-red-600',
+    Extended: 'bg-violet-600',
+    Custom:   'bg-teal-600',
   };
 }

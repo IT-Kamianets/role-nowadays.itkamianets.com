@@ -43,14 +43,14 @@ import { Game } from '../../models/game.model';
       <div class="max-w-md mx-auto">
 
         <!-- Header -->
-        <header class="sticky top-0 z-10 px-5 pt-12 pb-4 bg-[#0b0b17]/90 backdrop-blur-xl border-b border-white/[0.06] flex items-center gap-3">
+        <header class="sticky top-0 z-10 px-5 pt-12 pb-4 bg-[#0b0b17]/90 border-b border-[#1e1e30] flex items-center gap-3">
           <button (click)="back()"
-            class="w-10 h-10 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white/60 hover:bg-white/10 transition-colors shrink-0">
+            class="w-10 h-10 rounded-xl bg-[#12121e] border border-[#1e1e30] flex items-center justify-center text-white/60 hover:bg-white/10 transition-colors shrink-0">
             ←
           </button>
-          <h1 class="text-lg font-black text-white flex-1 tracking-tight">Ігрова кімната</h1>
+          <h1 class="text-lg font-black text-white flex-1 uppercase tracking-wide">Ігрова кімната</h1>
           @if (currentGame()?.pass) {
-            <div class="bg-violet-600/20 border border-violet-500/30 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+            <div class="bg-violet-600/20 border border-violet-500/30 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
               <span class="text-[10px] text-white/40 uppercase tracking-wider">PIN</span>
               <span class="text-sm font-mono font-bold text-violet-300">{{ currentGame()!.pass }}</span>
             </div>
@@ -68,28 +68,28 @@ import { Game } from '../../models/game.model';
 
           <!-- ═══════════════════════════════════════════════════ LOBBY -->
           @if (effectivePhase === 'lobby') {
-            <div class="bg-violet-600/10 border border-violet-500/20 rounded-2xl px-4 py-3 flex items-center gap-3">
-              <span class="text-xl">🏛️</span>
+            <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-4 flex items-center gap-3">
+              <span class="text-2xl">🏛️</span>
               <div>
-                <p class="text-sm font-bold text-white">Лобі · Очікування гравців</p>
+                <p class="text-sm font-black uppercase text-white">Лобі · Очікування гравців</p>
                 <p class="text-xs text-white/40">Режим: {{ currentGame()?.mode ?? '—' }}</p>
               </div>
             </div>
 
             <!-- Player list -->
             <div>
-              <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">
                 Гравці · {{ currentGame()?.players?.length ?? 0 }} / {{ currentGame()?.maxPlayers ?? 0 }}
               </p>
-              <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl divide-y divide-white/[0.05]">
+              <div class="space-y-2">
                 @for (i of playerIndices; track i) {
-                  <div class="flex items-center gap-3 px-4 py-3">
-                    <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-xs font-black text-white shrink-0">
+                  <div class="bg-[#12121e] border border-[#1e1e30] rounded-xl flex items-center gap-3 px-4 py-3">
+                    <div class="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-xs font-black text-white shrink-0">
                       {{ i + 1 }}
                     </div>
                     <span class="text-sm text-white/80">{{ playerName(i) }}</span>
                     @if (i === myIndexVal) {
-                      <span class="ml-auto text-[10px] text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded-full">Ви</span>
+                      <span class="ml-auto text-[10px] text-violet-400 font-bold bg-violet-500/10 px-2 py-0.5 rounded-lg">Ви</span>
                     }
                   </div>
                 }
@@ -101,10 +101,10 @@ import { Game } from '../../models/game.model';
 
             <!-- Start button — creator only -->
             @if (isCreator) {
-              <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-3">
+              <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-4 space-y-3">
                 <p class="text-xs text-white/40">Почніть гру коли збереться достатньо гравців (мін. 2).</p>
                 <button (click)="startGame()" [disabled]="loading() || (currentGame()?.players?.length ?? 0) < 2"
-                  class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black py-3.5 rounded-xl disabled:opacity-40 active:scale-[0.97] transition-all shadow-lg shadow-violet-900/30">
+                  class="w-full bg-violet-600 text-white font-black py-4 rounded-2xl uppercase tracking-wide disabled:opacity-40 active:scale-[0.97] transition-all">
                   {{ loading() ? 'Запуск...' : '⚔️ Розподілити ролі та почати' }}
                 </button>
                 @if (errorMsg()) {
@@ -117,11 +117,11 @@ import { Game } from '../../models/game.model';
           <!-- ═══════════════════════════════════════════════════ NIGHT -->
           @if (effectivePhase === 'night') {
 
-            <div class="bg-indigo-600/10 border border-indigo-500/20 rounded-2xl px-4 py-3 flex items-center gap-3">
-              <span class="text-xl">🌙</span>
+            <div class="bg-indigo-900/50 border border-indigo-700/40 rounded-2xl p-5 flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-indigo-700/60 flex items-center justify-center text-3xl shrink-0">🌙</div>
               <div>
-                <p class="text-sm font-bold text-white">Ніч · Раунд {{ gameData?.round }}</p>
-                <p class="text-xs text-white/40">Ролі виконують свої дії</p>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-indigo-300 mb-0.5">Поточна фаза</p>
+                <p class="text-2xl font-black uppercase text-white">Ніч · {{ gameData?.round }}</p>
               </div>
             </div>
 
@@ -146,7 +146,7 @@ import { Game } from '../../models/game.model';
 
             <!-- Villager: sleeping -->
             @if (myRole === 'Villager') {
-              <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 text-center">
+              <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-6 text-center">
                 <div class="text-4xl mb-3">😴</div>
                 <h3 class="text-base font-black text-white mb-1.5">Ви заснули...</h3>
                 <p class="text-sm text-white/50">Містяни сплять. Чекайте ранку.</p>
@@ -156,14 +156,14 @@ import { Game } from '../../models/game.model';
             <!-- Role player: pick target -->
             @if (myRole === 'Mafia' || myRole === 'Doctor' || myRole === 'Detective') {
               <div>
-                <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">{{ roleNightActionLabel }}</p>
-                <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl divide-y divide-white/[0.05] overflow-hidden">
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">{{ roleNightActionLabel }}</p>
+                <div class="space-y-2">
                   @for (p of nightTargets; track p.index) {
                     <button (click)="submitNightAction(p.index)"
-                      class="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left active:bg-white/[0.07]"
-                      [class]="myNightTarget === p.index ? 'bg-violet-900/30' : 'hover:bg-white/[0.04]'">
-                      <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0 transition-colors"
-                        [class]="myNightTarget === p.index ? 'bg-violet-600' : 'bg-gradient-to-br from-violet-600 to-indigo-700'">
+                      class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors text-left"
+                      [class]="myNightTarget === p.index ? 'border-violet-500/60 bg-violet-900/30' : 'bg-[#12121e] border-[#1e1e30] hover:bg-white/[0.04]'">
+                      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white shrink-0 transition-colors"
+                        [class]="myNightTarget === p.index ? 'bg-violet-600' : 'bg-violet-600'">
                         {{ p.index + 1 }}
                       </div>
                       <span class="text-sm text-white/80 flex-1">{{ p.label }}</span>
@@ -184,8 +184,8 @@ import { Game } from '../../models/game.model';
             <!-- Night mafia chat -->
             @if (myRole === 'Mafia') {
               <div>
-                <p class="text-[10px] text-red-400/60 uppercase tracking-[0.2em] mb-3">🔪 Чат мафії</p>
-                <div class="bg-red-950/20 border border-red-800/20 rounded-2xl overflow-hidden">
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-red-400/70 mb-3">🔪 Чат мафії</p>
+                <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl overflow-hidden">
                   <div class="max-h-40 overflow-y-auto p-3 space-y-2 min-h-[40px]">
                     @for (msg of nightMessages; track $index) {
                       <div class="text-xs">
@@ -197,13 +197,13 @@ import { Game } from '../../models/game.model';
                       <p class="text-xs text-white/20 text-center">Порожньо</p>
                     }
                   </div>
-                  <div class="border-t border-red-800/20 flex">
+                  <div class="border-t border-[#1e1e30] flex">
                     <input [(ngModel)]="nightChatText"
                       (keyup.enter)="sendNightMessage()"
                       placeholder="Повідомлення мафії..."
                       class="flex-1 bg-transparent px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none" />
                     <button (click)="sendNightMessage()"
-                      class="px-4 text-red-400 font-bold text-sm hover:text-red-300 transition-colors">
+                      class="bg-red-600 rounded-xl px-4 my-1.5 mr-1.5 font-black text-white text-sm transition-colors">
                       →
                     </button>
                   </div>
@@ -215,15 +215,15 @@ import { Game } from '../../models/game.model';
           <!-- ═══════════════════════════════════════════════════ DAY -->
           @if (effectivePhase === 'day') {
 
-            <div class="bg-amber-600/10 border border-amber-500/20 rounded-2xl px-4 py-3 flex items-center gap-3">
-              <span class="text-xl">☀️</span>
+            <div class="bg-amber-900/40 border border-amber-600/30 rounded-2xl p-5 flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-amber-700/50 flex items-center justify-center text-3xl shrink-0">☀️</div>
               <div class="flex-1">
-                <p class="text-sm font-bold text-white">День · Раунд {{ gameData?.round }}</p>
-                <p class="text-xs text-white/40">Обговорюйте та шукайте мафію</p>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-300 mb-0.5">Поточна фаза</p>
+                <p class="text-2xl font-black uppercase text-white">День · {{ gameData?.round }}</p>
               </div>
               <!-- Day countdown timer -->
               <div class="shrink-0 text-right">
-                <div class="text-2xl font-black"
+                <div class="text-2xl font-black tabular-nums"
                   [class]="daySecondsLeft() <= 10 ? 'text-red-400' : 'text-amber-300'">
                   {{ daySecondsLeft() }}
                 </div>
@@ -234,8 +234,8 @@ import { Game } from '../../models/game.model';
             <!-- Night result -->
             <div class="rounded-2xl p-5 border text-center"
               [class]="gameData?.eliminated !== null && gameData?.eliminated !== undefined
-                ? 'bg-red-950/40 border-red-800/30'
-                : 'bg-green-950/40 border-green-800/30'">
+                ? 'bg-red-950/60 border-red-800/50'
+                : 'bg-green-950/60 border-green-800/50'">
               @if (gameData?.eliminated !== null && gameData?.eliminated !== undefined) {
                 <div class="text-3xl mb-3">💀</div>
                 <h3 class="text-base font-black text-white mb-1">{{ playerName(gameData?.eliminated ?? 0) }} загинув</h3>
@@ -266,11 +266,11 @@ import { Game } from '../../models/game.model';
 
             <!-- Alive players -->
             <div>
-              <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">Живі · {{ alivePlayers.length }}</p>
-              <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl divide-y divide-white/[0.05]">
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Живі · {{ alivePlayers.length }}</p>
+              <div class="space-y-2">
                 @for (p of alivePlayers; track p.index) {
-                  <div class="flex items-center gap-3 px-4 py-3">
-                    <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-xs font-black text-white shrink-0">
+                  <div class="bg-[#12121e] border border-[#1e1e30] rounded-xl flex items-center gap-3 px-4 py-3">
+                    <div class="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-xs font-black text-white shrink-0">
                       {{ p.index + 1 }}
                     </div>
                     <span class="text-sm text-white/80 flex-1">{{ p.label }}</span>
@@ -285,8 +285,8 @@ import { Game } from '../../models/game.model';
             <!-- Event log -->
             @if (gameData?.log?.length) {
               <div>
-                <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">Журнал подій</p>
-                <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-2">
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Журнал подій</p>
+                <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-4 space-y-2">
                   @for (entry of gameData?.log ?? []; track $index) {
                     <p class="text-xs text-white/50 leading-relaxed">{{ entry }}</p>
                   }
@@ -296,8 +296,8 @@ import { Game } from '../../models/game.model';
 
             <!-- Day chat -->
             <div>
-              <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">Чат · День</p>
-              <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Чат · День</p>
+              <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl overflow-hidden">
                 <div class="max-h-48 overflow-y-auto p-3 space-y-2 min-h-[48px]">
                   @for (msg of dayMessages; track $index) {
                     <div class="text-xs">
@@ -309,13 +309,13 @@ import { Game } from '../../models/game.model';
                     <p class="text-xs text-white/20 text-center">Немає повідомлень</p>
                   }
                 </div>
-                <div class="border-t border-white/[0.06] flex">
+                <div class="border-t border-[#1e1e30] flex">
                   <input [(ngModel)]="dayChatText"
                     (keyup.enter)="sendDayMessage()"
                     placeholder="Повідомлення..."
                     class="flex-1 bg-transparent px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none" />
                   <button (click)="sendDayMessage()"
-                    class="px-4 text-violet-400 font-bold text-sm hover:text-violet-300 transition-colors">
+                    class="bg-violet-600 rounded-xl px-4 my-1.5 mr-1.5 font-black text-white text-sm transition-colors">
                     →
                   </button>
                 </div>
@@ -323,7 +323,7 @@ import { Game } from '../../models/game.model';
             </div>
 
             <!-- Timer notice -->
-            <div class="bg-amber-900/10 border border-amber-700/20 rounded-2xl p-4 text-center">
+            <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-4 text-center">
               @if (daySecondsLeft() > 0) {
                 <p class="text-sm text-amber-300/70">Голосування розпочнеться автоматично через {{ daySecondsLeft() }} сек</p>
               } @else {
@@ -335,13 +335,13 @@ import { Game } from '../../models/game.model';
           <!-- ═══════════════════════════════════════════════════ VOTING -->
           @if (effectivePhase === 'voting') {
 
-            <div class="bg-red-600/10 border border-red-500/20 rounded-2xl px-4 py-3 flex items-center gap-3">
-              <span class="text-xl">⚖️</span>
+            <div class="bg-red-900/40 border border-red-700/30 rounded-2xl p-5 flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-red-700/50 flex items-center justify-center text-3xl shrink-0">⚖️</div>
               <div class="flex-1">
-                <p class="text-sm font-bold text-white">Голосування · Раунд {{ gameData?.round }}</p>
-                <p class="text-xs text-white/40">Оберіть кого усунути</p>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-red-300 mb-0.5">Поточна фаза</p>
+                <p class="text-2xl font-black uppercase text-white">Голосування</p>
               </div>
-              <div class="text-xs text-white/50 shrink-0">
+              <div class="text-xs text-white/50 shrink-0 font-bold">
                 {{ voteCount }}/{{ alivePlayers.length }}
               </div>
             </div>
@@ -349,12 +349,12 @@ import { Game } from '../../models/game.model';
             @if (!hasVoted()) {
               <!-- Voting: pick target -->
               <div>
-                <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">Живі гравці</p>
-                <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl divide-y divide-white/[0.05] overflow-hidden">
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Живі гравці</p>
+                <div class="space-y-2">
                   @for (p of votingTargets; track p.index) {
                     <button (click)="submitVote(p.index)"
-                      class="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left hover:bg-white/[0.04] active:bg-white/[0.07]">
-                      <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-xs font-black text-white shrink-0">
+                      class="w-full flex items-center gap-3 px-4 py-3.5 bg-[#12121e] border border-[#1e1e30] rounded-xl transition-colors text-left hover:bg-white/[0.04] active:bg-white/[0.07]">
+                      <div class="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-xs font-black text-white shrink-0">
                         {{ p.index + 1 }}
                       </div>
                       <span class="text-sm text-white/80 flex-1">{{ p.label }}</span>
@@ -364,7 +364,7 @@ import { Game } from '../../models/game.model';
               </div>
             } @else {
               <!-- Already voted: waiting -->
-              <div class="bg-green-900/20 border border-green-700/30 rounded-2xl p-5 text-center">
+              <div class="bg-[#12121e] border border-green-700/40 rounded-2xl p-5 text-center">
                 <div class="text-3xl mb-3">✅</div>
                 <h3 class="text-base font-black text-white mb-1.5">Ви проголосували за {{ playerName(myVoteTarget() ?? 0) }}</h3>
                 <p class="text-sm text-white/50">Очікування інших... ({{ voteCount }}/{{ alivePlayers.length }})</p>
@@ -372,16 +372,16 @@ import { Game } from '../../models/game.model';
 
               <!-- Vote progress -->
               <div>
-                <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">Живі гравці</p>
-                <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl divide-y divide-white/[0.05]">
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Живі гравці</p>
+                <div class="space-y-2">
                   @for (p of alivePlayers; track p.index) {
-                    <div class="flex items-center gap-3 px-4 py-3">
-                      <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center text-xs font-black text-white shrink-0">
+                    <div class="bg-[#12121e] border border-[#1e1e30] rounded-xl flex items-center gap-3 px-4 py-3">
+                      <div class="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-xs font-black text-white shrink-0">
                         {{ p.index + 1 }}
                       </div>
                       <span class="text-sm text-white/80 flex-1">{{ p.label }}</span>
                       @if (hasPlayerVoted(p.index)) {
-                        <span class="text-[10px] text-green-400 font-bold">Проголосував ✓</span>
+                        <span class="text-[10px] font-black text-green-400 uppercase">Проголосував ✓</span>
                       } @else {
                         <span class="text-[10px] text-white/25">очікує...</span>
                       }
@@ -398,12 +398,10 @@ import { Game } from '../../models/game.model';
             <!-- Winner banner -->
             <div class="relative overflow-hidden rounded-2xl p-8 border text-center"
               [class]="gameData?.winner === 'mafia'
-                ? 'bg-gradient-to-br from-red-950/80 to-rose-950/80 border-red-800/30'
-                : 'bg-gradient-to-br from-blue-950/80 to-indigo-950/80 border-blue-800/30'">
-              <div class="absolute inset-0 opacity-10"
-                [class]="gameData?.winner === 'mafia' ? 'bg-red-500' : 'bg-blue-500'"></div>
+                ? 'bg-red-950 border-red-700/50'
+                : 'bg-blue-950 border-blue-700/50'">
               <div class="text-5xl mb-4">{{ gameData?.winner === 'mafia' ? '🔪' : '🛡️' }}</div>
-              <h2 class="text-2xl font-black text-white mb-2">
+              <h2 class="text-2xl font-black text-white mb-2 uppercase tracking-wide">
                 {{ gameData?.winner === 'mafia' ? 'Мафія перемогла!' : 'Місто перемогло!' }}
               </h2>
               <p class="text-sm text-white/50">
@@ -413,11 +411,11 @@ import { Game } from '../../models/game.model';
 
             <!-- All roles reveal -->
             <div>
-              <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">Всі ролі</p>
-              <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl divide-y divide-white/[0.05]">
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Всі ролі</p>
+              <div class="space-y-2">
                 @for (p of allPlayers; track p.index) {
-                  <div class="flex items-center gap-3 px-4 py-3" [class]="!p.isAlive ? 'opacity-40' : ''">
-                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0"
+                  <div class="bg-[#12121e] border border-[#1e1e30] rounded-xl flex items-center gap-3 px-4 py-3" [class]="!p.isAlive ? 'opacity-40' : ''">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white shrink-0"
                       [class]="roleDef(p.role).team === 'mafia' ? 'bg-red-700' : 'bg-blue-700'">
                       {{ p.index + 1 }}
                     </div>
@@ -437,8 +435,8 @@ import { Game } from '../../models/game.model';
             <!-- Game log -->
             @if (gameData?.log?.length) {
               <div>
-                <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-3">Журнал гри</p>
-                <div class="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-2">
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Журнал гри</p>
+                <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-4 space-y-2">
                   @for (entry of gameData?.log ?? []; track $index) {
                     <p class="text-xs text-white/50 leading-relaxed">{{ entry }}</p>
                   }
@@ -447,7 +445,7 @@ import { Game } from '../../models/game.model';
             }
 
             <button (click)="back()"
-              class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black py-4 rounded-2xl active:scale-[0.97] transition-all shadow-xl shadow-violet-900/40">
+              class="w-full bg-violet-600 text-white font-black py-4 rounded-2xl uppercase tracking-wide active:scale-[0.97] transition-all">
               Нова гра
             </button>
           }
@@ -771,8 +769,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   roleCardBg(team: string): string {
     return team === 'mafia'
-      ? 'bg-gradient-to-br from-red-950/70 to-rose-950/70 border-red-800/30'
-      : 'bg-gradient-to-br from-blue-950/70 to-indigo-950/70 border-blue-800/30';
+      ? 'bg-[#1a0a0a] border border-red-900/60'
+      : 'bg-[#0a0a1a] border border-blue-900/60';
   }
 
   revealCardBg(role: string): string {

@@ -19,10 +19,10 @@ type ModeFilter = string | null;
       <div class="max-w-md mx-auto">
 
         <!-- Header -->
-        <header class="sticky top-0 z-10 px-5 pt-12 pb-4 bg-[#0b0b17]/90 backdrop-blur-xl border-b border-white/[0.06]">
+        <header class="sticky top-0 z-10 px-5 pt-12 pb-4 bg-[#0b0b17]/90 border-b border-[#1e1e30]">
           <div class="flex items-end justify-between gap-4">
             <div>
-              <p class="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-1">Ласкаво просимо</p>
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-1">Ласкаво просимо</p>
               <h1 class="text-3xl font-black tracking-tight leading-none">
                 <span class="text-white">Role </span>
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">Nowadays</span>
@@ -31,12 +31,12 @@ type ModeFilter = string | null;
             <div class="flex items-center gap-2 shrink-0">
               <!-- Current nickname chip -->
               <button (click)="openNicknameModal()"
-                class="flex items-center gap-1.5 bg-white/[0.06] border border-white/[0.08] rounded-full px-3 py-2 transition-colors hover:bg-white/10">
+                class="flex items-center gap-1.5 bg-[#12121e] border border-[#1e1e30] rounded-xl px-3 py-2 transition-colors hover:bg-white/10">
                 <span class="text-xs text-white/60">👤</span>
                 <span class="text-xs font-semibold text-white/80 max-w-[80px] truncate">{{ nickname() }}</span>
               </button>
               <button (click)="createGame()"
-                class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-2xl shadow-lg shadow-violet-900/40 transition-transform active:scale-95">
+                class="bg-violet-600 text-white text-sm font-bold px-5 py-2.5 rounded-2xl transition-transform active:scale-95">
                 + Створити
               </button>
             </div>
@@ -47,17 +47,17 @@ type ModeFilter = string | null;
         <div class="px-5 py-4 flex gap-2 overflow-x-auto no-scrollbar">
           @for (tab of filterTabs; track tab.value) {
             <button (click)="setFilter(tab.value)"
-              class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all"
+              class="whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-wide transition-all"
               [class]="activeFilter() === tab.value
-                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-900/30'
-                : 'bg-white/[0.06] text-white/50 border border-white/[0.08] hover:bg-white/10'">
+                ? 'bg-violet-600 text-white'
+                : 'bg-[#12121e] text-white/50 border border-[#1e1e30] hover:bg-white/10'">
               {{ tab.label }}
             </button>
           }
         </div>
 
         <!-- Game List -->
-        <main class="px-5 space-y-3 pb-12">
+        <main class="px-5 space-y-4 pb-12">
           @if (filteredGames().length === 0) {
             <div class="text-center text-white/25 py-20 text-sm">Ігор не знайдено</div>
           }
@@ -71,9 +71,9 @@ type ModeFilter = string | null;
 
     <!-- Nickname modal -->
     @if (showModal()) {
-      <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
         (click)="onBackdropClick($event)">
-        <div class="w-full max-w-md bg-[#12121f] border border-white/[0.08] rounded-t-3xl p-6 pb-10 space-y-5"
+        <div class="w-full max-w-md bg-[#12121e] border border-[#1e1e30] rounded-t-3xl p-6 pb-10 space-y-5"
           (click)="$event.stopPropagation()">
           <div class="w-10 h-1 bg-white/20 rounded-full mx-auto"></div>
           <div>
@@ -85,10 +85,10 @@ type ModeFilter = string | null;
             (keyup.enter)="saveNickname()"
             placeholder="Введіть нікнейм..."
             maxlength="30"
-            class="w-full bg-white/[0.06] border border-white/[0.10] rounded-2xl px-4 py-3.5 text-white text-base placeholder-white/25 outline-none focus:border-violet-500/60 focus:bg-white/[0.08] transition-all" />
+            class="w-full bg-[#0b0b17] border border-[#1e1e30] rounded-2xl px-4 py-3.5 text-white text-base placeholder-white/25 outline-none focus:border-violet-500 transition-all" />
           <button (click)="saveNickname()"
             [disabled]="nicknameValue.trim().length < 2 || tokenLoading()"
-            class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black py-3.5 rounded-2xl shadow-lg shadow-violet-900/30 disabled:opacity-40 transition-all active:scale-[0.98]">
+            class="w-full bg-violet-600 text-white font-black py-3.5 rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]">
             {{ tokenLoading() ? 'Підключення...' : 'Зберегти' }}
           </button>
         </div>
