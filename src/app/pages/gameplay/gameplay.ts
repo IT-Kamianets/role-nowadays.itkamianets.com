@@ -26,7 +26,11 @@ import { Game } from '../../models/game.model';
             [class]="revealCardBg(myRole)">
             <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-25"
               [class]="revealGlowColor(myRole)"></div>
-            <div class="text-8xl mb-6 relative">{{ revealRoleIcon(myRole) }}</div>
+            @if (myRole === 'Doctor') {
+              <img src="assets/doctor-role.gif" alt="Doctor" class="w-44 object-contain rounded-2xl mx-auto mb-6 relative" />
+            } @else {
+              <div class="text-8xl mb-6 relative">{{ revealRoleIcon(myRole) }}</div>
+            }
             <h2 class="text-4xl font-black text-white mb-3 leading-tight relative">{{ myRole }}</h2>
             <span class="inline-block text-xs px-3 py-1.5 rounded-full font-bold mb-4 border relative"
               [class]="revealBadge(myRole)">
@@ -132,7 +136,11 @@ import { Game } from '../../models/game.model';
                   [class]="myRoleDef.team === 'mafia' ? 'bg-red-500' : 'bg-blue-500'"></div>
                 <p class="text-[10px] uppercase tracking-[0.2em] mb-3" [class]="teamAccent(myRoleDef.team)">Ваша роль</p>
                 <div class="flex items-start gap-4">
-                  <div class="text-4xl shrink-0 mt-0.5">{{ roleIcon(myRoleDef.team) }}</div>
+                  @if (myRole === 'Doctor') {
+                    <img src="assets/doctor-role.gif" alt="Doctor" class="w-14 object-contain rounded-xl shrink-0" />
+                  } @else {
+                    <div class="text-4xl shrink-0 mt-0.5">{{ roleIcon(myRoleDef.team) }}</div>
+                  }
                   <div class="flex-1 min-w-0">
                     <h2 class="text-2xl font-black text-white mb-1.5 leading-tight">{{ myRole }}</h2>
                     <span class="inline-block text-[10px] px-2.5 py-1 rounded-full font-bold mb-2 border" [class]="teamBadge(myRoleDef.team)">
