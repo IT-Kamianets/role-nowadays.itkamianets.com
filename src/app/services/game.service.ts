@@ -67,6 +67,10 @@ export class GameService {
     return this.http.post<Game>(`${BASE}/update`, { _id: id, ...fields }, OPTIONS);
   }
 
+  submitNightAction(gameId: string, field: string, target: number): Observable<Game> {
+    return this.http.post<Game>(`${BASE}/night-action`, { _id: gameId, field, target }, OPTIONS);
+  }
+
   submitVote(gameId: string, voterIndex: number, targetIndex: number): Observable<Game> {
     return this.http.post<Game>(`${BASE}/vote`, { _id: gameId, voterIndex, targetIndex }, OPTIONS);
   }
