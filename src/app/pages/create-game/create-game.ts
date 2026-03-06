@@ -131,7 +131,10 @@ export class CreateGameComponent {
   create() {
     this.loading.set(true);
     this.gameService.createGame(this.selectedMode(), this.playerLimit()).subscribe({
-      next: (game) => this.router.navigate(['/gameplay', game._id]),
+      next: (game) => {
+        if (game?._id) this.router.navigate(['/gameplay', game._id]);
+        else this.loading.set(false);
+      },
       error: () => this.loading.set(false),
     });
   }
