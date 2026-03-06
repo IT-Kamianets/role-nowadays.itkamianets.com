@@ -2,8 +2,8 @@ import { Component, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { interval, Subscription } from 'rxjs';
-import { startWith, switchMap } from 'rxjs/operators';
+import { interval, Subscription, EMPTY } from 'rxjs';
+import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { GameCardComponent } from '../../components/game-card/game-card';
 import { Game } from '../../models/game.model';
@@ -135,7 +135,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private startPolling() {
     this.pollSub = interval(5000).pipe(
       startWith(0),
-      switchMap(() => this.gameService.getGames()),
+      switchMap(() => this.gameService.getGames().pipe(catchError(() => EMPTY))),
     ).subscribe(games => {
       if (!Array.isArray(games)) return;
       this.allGames.set(games);

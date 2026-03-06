@@ -2,8 +2,8 @@ import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { interval, Subscription } from 'rxjs';
-import { startWith, switchMap } from 'rxjs/operators';
+import { interval, Subscription, EMPTY } from 'rxjs';
+import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { ClassicMafiaService, MafiaGameData } from '../../services/classic-mafia.service';
 import { Game } from '../../models/game.model';
@@ -468,7 +468,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     if (this.gameId) {
       this.pollSub = interval(3000).pipe(
         startWith(0),
-        switchMap(() => this.gameService.getGame(this.gameId)),
+        switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY))),
       ).subscribe(game => {
         if (!game || typeof game !== 'object') return;
 
