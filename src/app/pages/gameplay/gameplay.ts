@@ -15,32 +15,42 @@ import { Game } from '../../models/game.model';
   template: `
     <!-- Role Reveal Overlay -->
     @if (showRoleReveal() && myRoleDef && myRole) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0b17] px-6"
-        [class]="roleRevealed() ? 'pointer-events-none' : 'cursor-pointer'"
-        (click)="revealRole()">
-        <div class="w-full transition-all duration-[600ms] ease-in-out"
-          [class]="roleRevealed()
-            ? 'max-w-[280px] scale-[0.55] opacity-0'
-            : 'max-w-md scale-100 opacity-100'">
-          <div class="relative overflow-hidden rounded-3xl p-8 border-2 text-center"
-            [class]="revealCardBg(myRole)">
-            <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-25"
-              [class]="revealGlowColor(myRole)"></div>
-            @if (myRole === 'Doctor') {
-              <img src="/doctor-role.gif" alt="Doctor" class="w-48 object-contain rounded-2xl mx-auto mb-6 relative" />
-            } @else {
+      @if (myRole === 'Doctor') {
+        <!-- Fullscreen video reveal for Doctor -->
+        <div class="fixed inset-0 z-50 bg-black transition-opacity duration-700"
+          [class]="roleRevealed() ? 'opacity-0 pointer-events-none' : 'opacity-100'">
+          <video #doctorRevealVideo
+            src="/doctor-reveal.mp4"
+            autoplay muted playsinline
+            (ended)="revealRole()"
+            class="w-full h-full object-contain">
+          </video>
+        </div>
+      } @else {
+        <!-- Standard card reveal for other roles -->
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0b17] px-6"
+          [class]="roleRevealed() ? 'pointer-events-none' : 'cursor-pointer'"
+          (click)="revealRole()">
+          <div class="w-full transition-all duration-[600ms] ease-in-out"
+            [class]="roleRevealed()
+              ? 'max-w-[280px] scale-[0.55] opacity-0'
+              : 'max-w-md scale-100 opacity-100'">
+            <div class="relative overflow-hidden rounded-3xl p-8 border-2 text-center"
+              [class]="revealCardBg(myRole)">
+              <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-25"
+                [class]="revealGlowColor(myRole)"></div>
               <div class="text-8xl mb-6 relative">{{ revealRoleIcon(myRole) }}</div>
-            }
-            <h2 class="text-4xl font-black text-white mb-3 leading-tight relative">{{ myRole }}</h2>
-            <span class="inline-block text-xs px-3 py-1.5 rounded-full font-bold mb-4 border relative"
-              [class]="revealBadge(myRole)">
-              {{ teamLabel(myRoleDef.team) }}
-            </span>
-            <p class="text-sm text-white/60 leading-relaxed mb-8 relative">{{ myRoleDef.description }}</p>
-            <p class="text-xs text-white/30 animate-pulse relative">Торкніться щоб продовжити</p>
+              <h2 class="text-4xl font-black text-white mb-3 leading-tight relative">{{ myRole }}</h2>
+              <span class="inline-block text-xs px-3 py-1.5 rounded-full font-bold mb-4 border relative"
+                [class]="revealBadge(myRole)">
+                {{ teamLabel(myRoleDef.team) }}
+              </span>
+              <p class="text-sm text-white/60 leading-relaxed mb-8 relative">{{ myRoleDef.description }}</p>
+              <p class="text-xs text-white/30 animate-pulse relative">Торкніться щоб продовжити</p>
+            </div>
           </div>
         </div>
-      </div>
+      }
     }
 
     <div class="min-h-screen bg-[#0b0b17]">
