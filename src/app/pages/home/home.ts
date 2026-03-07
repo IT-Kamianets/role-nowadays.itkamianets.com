@@ -15,31 +15,39 @@ type ModeFilter = string | null;
   standalone: true,
   imports: [CommonModule, FormsModule, GameCardComponent],
   template: `
-    <div class="min-h-screen bg-[#0b0b17]">
+    <div class="min-h-screen bg-[#0d0905]">
       <div class="max-w-md mx-auto">
 
         <!-- Header -->
-        <header class="sticky top-0 z-10 px-5 pt-12 pb-4 bg-[#0b0b17]/90 border-b border-[#1e1e30]">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-1">Ласкаво просимо</p>
-              <h1 class="text-3xl font-black tracking-tight leading-none">
-                <span class="text-white">Role </span>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">Nowadays</span>
-              </h1>
+        <header class="sticky top-0 z-10 px-5 pt-10 pb-4 bg-[#0d0905]/95 border-b border-[#2d1f10]">
+          <div class="flex items-center justify-between gap-3">
+
+            <!-- Logo -->
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="/mafia-card.jpg" alt="Role Nowadays"
+                class="w-10 h-[52px] object-cover object-top rounded-lg border border-amber-900/50 shadow-md shadow-black/60 shrink-0">
+              <div class="min-w-0">
+                <p class="text-[9px] uppercase tracking-[0.2em] font-bold text-amber-700/60 mb-0.5">Соціальна гра</p>
+                <h1 class="text-2xl font-black tracking-tight leading-none">
+                  <span class="text-amber-100">Role </span>
+                  <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-400">Nowadays</span>
+                </h1>
+              </div>
             </div>
+
+            <!-- Actions -->
             <div class="flex items-center gap-2 shrink-0">
-              <!-- Current nickname chip -->
               <button (click)="openNicknameModal()"
-                class="flex items-center gap-1.5 bg-[#12121e] border border-[#1e1e30] rounded-xl px-3 py-2 transition-colors hover:bg-white/10">
-                <span class="text-xs text-white/60">👤</span>
-                <span class="text-xs font-semibold text-white/80 max-w-[80px] truncate">{{ nickname() }}</span>
+                class="flex items-center gap-1.5 bg-[#1a110a] border border-[#2d1f10] rounded-xl px-3 py-2 transition-colors hover:bg-amber-900/20">
+                <span class="text-xs">👤</span>
+                <span class="text-xs font-semibold text-amber-100/70 max-w-[70px] truncate">{{ nickname() }}</span>
               </button>
               <button (click)="createGame()"
-                class="bg-violet-600 text-white text-sm font-bold px-5 py-2.5 rounded-2xl transition-transform active:scale-95">
+                class="bg-amber-700 hover:bg-amber-600 text-amber-50 text-sm font-black px-4 py-2.5 rounded-2xl transition-all active:scale-95 uppercase tracking-wide">
                 + Створити
               </button>
             </div>
+
           </div>
         </header>
 
@@ -47,10 +55,10 @@ type ModeFilter = string | null;
         <div class="px-5 py-4 flex gap-2 overflow-x-auto no-scrollbar">
           @for (tab of filterTabs; track tab.value) {
             <button (click)="setFilter(tab.value)"
-              class="whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-wide transition-all"
+              class="whitespace-nowrap px-4 py-2 rounded-xl text-sm font-black uppercase tracking-wide transition-all"
               [class]="activeFilter() === tab.value
-                ? 'bg-violet-600 text-white'
-                : 'bg-[#12121e] text-white/50 border border-[#1e1e30] hover:bg-white/10'">
+                ? 'bg-amber-700 text-amber-50'
+                : 'bg-[#1a110a] text-amber-100/35 border border-[#2d1f10] hover:bg-amber-900/20 hover:text-amber-100/60'">
               {{ tab.label }}
             </button>
           }
@@ -59,7 +67,7 @@ type ModeFilter = string | null;
         <!-- Game List -->
         <main class="px-5 space-y-4 pb-12">
           @if (filteredGames().length === 0) {
-            <div class="text-center text-white/25 py-20 text-sm">Ігор не знайдено</div>
+            <div class="text-center text-amber-100/20 py-20 text-sm">Ігор не знайдено</div>
           }
           @for (game of filteredGames(); track game._id) {
             <app-game-card [game]="game" (join)="joinGame($event)" />
@@ -71,24 +79,24 @@ type ModeFilter = string | null;
 
     <!-- Nickname modal -->
     @if (showModal()) {
-      <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
+      <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/80"
         (click)="onBackdropClick($event)">
-        <div class="w-full max-w-md bg-[#12121e] border border-[#1e1e30] rounded-t-3xl p-6 pb-10 space-y-5"
+        <div class="w-full max-w-md bg-[#1a110a] border border-[#2d1f10] rounded-t-3xl p-6 pb-10 space-y-5"
           (click)="$event.stopPropagation()">
-          <div class="w-10 h-1 bg-white/20 rounded-full mx-auto"></div>
+          <div class="w-10 h-1 bg-amber-700/30 rounded-full mx-auto"></div>
           <div>
-            <h2 class="text-xl font-black text-white mb-1">Ваш нікнейм</h2>
-            <p class="text-sm text-white/40">Його побачать інші гравці у грі</p>
+            <h2 class="text-xl font-black text-amber-100 mb-1">Ваш нікнейм</h2>
+            <p class="text-sm text-amber-100/40">Його побачать інші гравці у грі</p>
           </div>
           <input #nicknameInput
             [(ngModel)]="nicknameValue"
             (keyup.enter)="saveNickname()"
             placeholder="Введіть нікнейм..."
             maxlength="30"
-            class="w-full bg-[#0b0b17] border border-[#1e1e30] rounded-2xl px-4 py-3.5 text-white text-base placeholder-white/25 outline-none focus:border-violet-500 transition-all" />
+            class="w-full bg-[#0d0905] border border-[#2d1f10] rounded-2xl px-4 py-3.5 text-amber-100 text-base placeholder-amber-100/20 outline-none focus:border-amber-700 transition-all" />
           <button (click)="saveNickname()"
             [disabled]="nicknameValue.trim().length < 2 || tokenLoading()"
-            class="w-full bg-violet-600 text-white font-black py-3.5 rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]">
+            class="w-full bg-amber-700 text-amber-50 font-black py-3.5 rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98] uppercase tracking-wide">
             {{ tokenLoading() ? 'Підключення...' : 'Зберегти' }}
           </button>
         </div>
@@ -113,7 +121,12 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   filteredGames = computed(() => {
     const filter = this.activeFilter();
-    const games = this.allGames().filter(g => g.status === 'lobby');
+    const cutoff = Date.now() - 20 * 60 * 1000;
+    const games = this.allGames().filter(g => {
+      if (g.status !== 'lobby') return false;
+      const created = parseInt(g._id.substring(0, 8), 16) * 1000;
+      return created > cutoff;
+    });
     return filter ? games.filter(g => g.mode === filter) : games;
   });
 

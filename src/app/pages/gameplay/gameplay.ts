@@ -133,9 +133,16 @@ import { Game } from '../../models/game.model';
 
             <div class="bg-indigo-900/50 border border-indigo-700/40 rounded-2xl p-5 flex items-center gap-4">
               <div class="w-14 h-14 rounded-2xl bg-indigo-700/60 flex items-center justify-center text-3xl shrink-0">🌙</div>
-              <div>
+              <div class="flex-1">
                 <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-indigo-300 mb-0.5">Поточна фаза</p>
                 <p class="text-2xl font-black uppercase text-white">Ніч · {{ gameData?.round }}</p>
+              </div>
+              <div class="shrink-0 text-right">
+                <div class="text-2xl font-black tabular-nums"
+                  [class]="nightSecondsLeft() <= 10 ? 'text-red-400' : 'text-indigo-300'">
+                  {{ nightSecondsLeft() }}
+                </div>
+                <div class="text-[10px] text-white/30 uppercase tracking-wider">сек</div>
               </div>
             </div>
 
@@ -367,9 +374,14 @@ import { Game } from '../../models/game.model';
               <div class="flex-1">
                 <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-red-300 mb-0.5">Поточна фаза</p>
                 <p class="text-2xl font-black uppercase text-white">Голосування</p>
+                <p class="text-xs text-white/50 mt-0.5">{{ voteCount }}/{{ alivePlayers.length }} проголосували</p>
               </div>
-              <div class="text-xs text-white/50 shrink-0 font-bold">
-                {{ voteCount }}/{{ alivePlayers.length }}
+              <div class="shrink-0 text-right">
+                <div class="text-2xl font-black tabular-nums"
+                  [class]="votingSecondsLeft() <= 10 ? 'text-red-400' : 'text-red-300'">
+                  {{ votingSecondsLeft() }}
+                </div>
+                <div class="text-[10px] text-white/30 uppercase tracking-wider">сек</div>
               </div>
             </div>
 
@@ -487,6 +499,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
   myVoteTarget = signal<number | null>(null);
   hasVoted = signal(false);
   daySecondsLeft = signal(60);
+  nightSecondsLeft = signal(30);
+  votingSecondsLeft = signal(30);
   loading = signal(false);
   errorMsg = signal<string | null>(null);
   allMessages = signal<any[]>([]);
@@ -503,6 +517,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
   private msgPollSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
   private dayTransitionSent = false;
+  private nightTransitionSent = false;
+  private votingTransitionSent = false;
 
   constructor(
     private gameService: GameService,
@@ -548,22 +564,53 @@ export class GameplayComponent implements OnInit, OnDestroy {
       });
     }
 
-    // 1-second interval: update day countdown + trigger day→voting transition
+    // 1-second interval: update countdowns + trigger phase transitions
     this.timerInterval = setInterval(() => {
       const d = this.gameData;
+
+      // Day timer
       if (d?.phase === 'day' && d.phaseStartedAt) {
         const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-        const left = Math.max(0, 60 - elapsed);
+        const dayDur = d.settings?.dayDuration ?? 60;
+        const left = Math.max(0, dayDur - elapsed);
         this.daySecondsLeft.set(left);
         if (left === 0 && !this.dayTransitionSent) {
           this.dayTransitionSent = true;
           this.triggerDayToVoting();
         }
       } else {
-        if (d?.phase !== 'day') {
-          this.daySecondsLeft.set(60);
-          this.dayTransitionSent = false;
+        this.daySecondsLeft.set(d?.settings?.dayDuration ?? 60);
+        this.dayTransitionSent = false;
+      }
+
+      // Night timer
+      if (d?.phase === 'night' && d.phaseStartedAt) {
+        const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
+        const nightDur = d.settings?.nightDuration ?? 30;
+        const left = Math.max(0, nightDur - elapsed);
+        this.nightSecondsLeft.set(left);
+        if (left === 0 && !this.nightTransitionSent) {
+          this.nightTransitionSent = true;
+          this.triggerNightToDay();
         }
+      } else {
+        this.nightSecondsLeft.set(d?.settings?.nightDuration ?? 30);
+        this.nightTransitionSent = false;
+      }
+
+      // Voting timer
+      if (d?.phase === 'voting' && d.phaseStartedAt) {
+        const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
+        const voteDur = d.settings?.votingDuration ?? 30;
+        const left = Math.max(0, voteDur - elapsed);
+        this.votingSecondsLeft.set(left);
+        if (left === 0 && !this.votingTransitionSent) {
+          this.votingTransitionSent = true;
+          this.triggerVotingEnd();
+        }
+      } else {
+        this.votingSecondsLeft.set(d?.settings?.votingDuration ?? 30);
+        this.votingTransitionSent = false;
       }
     }, 1000);
   }
@@ -658,7 +705,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
   startGame() {
     const g = this.currentGame();
     if (!g) return;
-    const data = this.classicMafia.initGameData(g.players.length);
+    const raw = localStorage.getItem('gameSettings_' + this.gameId);
+    const settings = raw ? JSON.parse(raw) : { dayDuration: 60, nightDuration: 30, votingDuration: 30 };
+    const data = this.classicMafia.initGameData(g.players.length, settings);
     this.loading.set(true);
     this.errorMsg.set(null);
     this.gameService.updateGame(this.gameId, { status: 'running', data }).subscribe({
@@ -702,9 +751,48 @@ export class GameplayComponent implements OnInit, OnDestroy {
     if (!this.isCreator) { this.dayTransitionSent = false; return; }
     const d = this.gameData;
     if (!d || d.phase !== 'day') { this.dayTransitionSent = false; return; }
-    this.gameService.updateGame(this.gameId, { data: { ...d, phase: 'voting', phaseStartedAt: Date.now() } }).subscribe({
+    this.gameService.updateGame(this.gameId, { data: { ...d, phase: 'voting', votes: {}, phaseStartedAt: Date.now() } }).subscribe({
       next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
       error: () => { this.dayTransitionSent = false; },
+    });
+  }
+
+  triggerNightToDay() {
+    if (!this.isCreator) { this.nightTransitionSent = false; return; }
+    const d = this.gameData;
+    if (!d || d.phase !== 'night') { this.nightTransitionSent = false; return; }
+    const { data: resolved } = this.classicMafia.resolveNight(d);
+    const winner = this.classicMafia.checkWin(resolved);
+    const finalData: MafiaGameData = winner
+      ? { ...resolved, phase: 'finished', winner }
+      : { ...resolved, phaseStartedAt: Date.now() };
+    this.gameService.updateGame(this.gameId, { data: finalData }).subscribe({
+      next: game => { if (game) this.currentGame.set(game); },
+      error: () => { this.nightTransitionSent = false; },
+    });
+  }
+
+  triggerVotingEnd() {
+    if (!this.isCreator) { this.votingTransitionSent = false; return; }
+    const d = this.gameData;
+    if (!d || d.phase !== 'voting') { this.votingTransitionSent = false; return; }
+    const tally: Record<number, number> = {};
+    for (const target of Object.values(d.votes ?? {})) {
+      tally[target] = (tally[target] ?? 0) + 1;
+    }
+    const aliveSet = new Set(d.alive);
+    let maxVotes = 0, eliminated = d.alive[0];
+    for (const [idx, cnt] of Object.entries(tally)) {
+      if (aliveSet.has(+idx) && cnt > maxVotes) { maxVotes = cnt; eliminated = +idx; }
+    }
+    const resolved = this.classicMafia.resolveVoting(d, eliminated);
+    const winner = this.classicMafia.checkWin(resolved);
+    const finalData: MafiaGameData = winner
+      ? { ...resolved, phase: 'finished', winner }
+      : { ...resolved, phaseStartedAt: Date.now() };
+    this.gameService.updateGame(this.gameId, { data: finalData }).subscribe({
+      next: game => { if (game) this.currentGame.set(game); },
+      error: () => { this.votingTransitionSent = false; },
     });
   }
 

@@ -77,6 +77,62 @@ interface ModeOption {
             </div>
           </div>
 
+          <!-- Timer Settings -->
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40 mb-3">Налаштування таймерів</p>
+            <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-4 space-y-5">
+
+              <!-- Day duration -->
+              <div>
+                <div class="flex items-baseline justify-between mb-2">
+                  <span class="text-sm text-white/70">☀️ Тривалість дня</span>
+                  <span class="text-base font-black text-amber-400">{{ dayDuration() }}с</span>
+                </div>
+                <input type="range" min="30" max="180" step="10"
+                  [ngModel]="dayDuration()"
+                  (ngModelChange)="dayDuration.set(+$event)"
+                  class="w-full accent-amber-500 cursor-pointer">
+                <div class="flex justify-between text-xs text-white/25 mt-1">
+                  <span>30с</span>
+                  <span>180с</span>
+                </div>
+              </div>
+
+              <!-- Night duration -->
+              <div>
+                <div class="flex items-baseline justify-between mb-2">
+                  <span class="text-sm text-white/70">🌙 Тривалість ночі</span>
+                  <span class="text-base font-black text-indigo-400">{{ nightDuration() }}с</span>
+                </div>
+                <input type="range" min="15" max="90" step="5"
+                  [ngModel]="nightDuration()"
+                  (ngModelChange)="nightDuration.set(+$event)"
+                  class="w-full accent-indigo-500 cursor-pointer">
+                <div class="flex justify-between text-xs text-white/25 mt-1">
+                  <span>15с</span>
+                  <span>90с</span>
+                </div>
+              </div>
+
+              <!-- Voting duration -->
+              <div>
+                <div class="flex items-baseline justify-between mb-2">
+                  <span class="text-sm text-white/70">⚖️ Тривалість голосування</span>
+                  <span class="text-base font-black text-red-400">{{ votingDuration() }}с</span>
+                </div>
+                <input type="range" min="15" max="90" step="5"
+                  [ngModel]="votingDuration()"
+                  (ngModelChange)="votingDuration.set(+$event)"
+                  class="w-full accent-red-500 cursor-pointer">
+                <div class="flex justify-between text-xs text-white/25 mt-1">
+                  <span>15с</span>
+                  <span>90с</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
           <!-- Summary -->
           <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl p-4 space-y-3">
             <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40">Підсумок</p>
@@ -88,6 +144,11 @@ interface ModeOption {
             <div class="flex justify-between items-center">
               <span class="text-sm text-white/50">Макс. гравців</span>
               <span class="text-sm font-semibold text-white">{{ playerLimit() }}</span>
+            </div>
+            <div class="h-px bg-[#1e1e30]"></div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-white/50">Таймери</span>
+              <span class="text-sm font-semibold text-white">День {{ dayDuration() }}с / Ніч {{ nightDuration() }}с / Голос. {{ votingDuration() }}с</span>
             </div>
           </div>
 
@@ -116,6 +177,9 @@ export class CreateGameComponent {
 
   selectedMode = signal<GameMode>('Classic');
   playerLimit = signal(8);
+  dayDuration = signal(60);
+  nightDuration = signal(30);
+  votingDuration = signal(30);
   loading = signal(false);
 
   constructor(private gameService: GameService, private router: Router) {}
@@ -130,8 +194,16 @@ export class CreateGameComponent {
     this.loading.set(true);
     this.gameService.createGame(this.selectedMode(), this.playerLimit()).subscribe({
       next: (game) => {
-        if (game?._id) this.router.navigate(['/gameplay', game._id]);
-        else this.loading.set(false);
+        if (game?._id) {
+          localStorage.setItem('gameSettings_' + game._id, JSON.stringify({
+            dayDuration: this.dayDuration(),
+            nightDuration: this.nightDuration(),
+            votingDuration: this.votingDuration(),
+          }));
+          this.router.navigate(['/gameplay', game._id]);
+        } else {
+          this.loading.set(false);
+        }
       },
       error: () => this.loading.set(false),
     });

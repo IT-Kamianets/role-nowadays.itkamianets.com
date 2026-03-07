@@ -7,16 +7,24 @@ import { Game } from '../../models/game.model';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="bg-[#12121e] border border-[#1e1e30] rounded-2xl overflow-hidden">
+    <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden">
       <!-- Mode header -->
       <div class="px-4 py-3 flex items-center justify-between" [class]="modeHeaderBg[game.mode]">
         <div class="flex items-center gap-2">
           <span class="text-base">{{ modeIcon[game.mode] }}</span>
           <span class="font-black uppercase tracking-wide text-sm text-white">{{ modeLabels[game.mode] }}</span>
         </div>
-        <span class="bg-white/20 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded">
-          {{ game.status === 'lobby' ? 'Лобі' : 'Триває' }}
-        </span>
+        <div class="flex items-center gap-2">
+          @if (game.status === 'lobby') {
+            <span class="text-[10px] font-bold tabular-nums"
+              [class]="lobbyMinutesLeft <= 5 ? 'text-red-200' : 'text-white/50'">
+              ⏱ {{ lobbyMinutesLeft }}хв
+            </span>
+          }
+          <span class="bg-black/25 text-white/80 text-[10px] font-bold uppercase px-2 py-0.5 rounded">
+            {{ game.status === 'lobby' ? 'Лобі' : 'Триває' }}
+          </span>
+        </div>
       </div>
 
       <!-- Body -->
@@ -24,10 +32,10 @@ import { Game } from '../../models/game.model';
         <!-- Players + progress bar -->
         <div class="space-y-1.5">
           <div class="flex justify-between items-center">
-            <span class="text-[10px] uppercase tracking-[0.25em] font-bold text-white/40">Гравці</span>
-            <span class="text-xs font-bold text-white/60">{{ game.players.length }} / {{ game.maxPlayers }}</span>
+            <span class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30">Гравці</span>
+            <span class="text-xs font-bold text-amber-100/50">{{ game.players.length }} / {{ game.maxPlayers }}</span>
           </div>
-          <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div class="h-1.5 bg-black/30 rounded-full overflow-hidden">
             <div class="h-full rounded-full transition-all" [class]="modeProgressBar[game.mode]"
               [style.width]="(game.players.length / game.maxPlayers * 100) + '%'">
             </div>
@@ -42,7 +50,7 @@ import { Game } from '../../models/game.model';
             Приєднатись →
           </button>
         } @else {
-          <div class="w-full py-3 rounded-xl text-center text-xs font-bold uppercase text-white/20 bg-white/[0.03]">
+          <div class="w-full py-3 rounded-xl text-center text-xs font-bold uppercase text-amber-100/20 bg-black/20">
             Заповнена
           </div>
         }
@@ -83,4 +91,9 @@ export class GameCardComponent {
     Extended: 'bg-violet-600',
     Custom:   'bg-teal-600',
   };
+
+  get lobbyMinutesLeft(): number {
+    const created = parseInt(this.game._id.substring(0, 8), 16) * 1000;
+    return Math.max(0, Math.ceil((created + 20 * 60 * 1000 - Date.now()) / 60000));
+  }
 }

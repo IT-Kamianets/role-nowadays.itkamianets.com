@@ -18,6 +18,11 @@ export interface MafiaGameData {
   phaseStartedAt: number;
   dayMessages?: { sender: number; text: string }[];
   nightMessages?: { sender: number; text: string }[];
+  settings?: {
+    dayDuration: number;
+    nightDuration: number;
+    votingDuration: number;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -60,7 +65,7 @@ export class ClassicMafiaService {
     return roles;
   }
 
-  initGameData(playerCount: number): MafiaGameData {
+  initGameData(playerCount: number, settings?: { dayDuration: number; nightDuration: number; votingDuration: number }): MafiaGameData {
     const rolesArr = this.assignRoles(playerCount);
     const roles: Record<string, string> = {};
     rolesArr.forEach((r, i) => { roles[String(i)] = r; });
@@ -78,6 +83,7 @@ export class ClassicMafiaService {
       phaseStartedAt: Date.now(),
       dayMessages: [],
       nightMessages: [],
+      settings: settings ?? { dayDuration: 60, nightDuration: 30, votingDuration: 30 },
     };
   }
 
