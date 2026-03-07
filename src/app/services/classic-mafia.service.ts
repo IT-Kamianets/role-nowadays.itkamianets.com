@@ -10,9 +10,25 @@ export interface MafiaGameData {
     doctorTarget: number | null;
     detectiveTarget: number | null;
     detectiveResult: 'mafia' | 'village' | null;
+    // Extended roles (optional — Classic mode unaffected)
+    bodyguardTarget?: number | null;
+    sheriffTarget?: number | null;
+    sheriffResult?: 'mafia' | 'city' | null;
+    trackerTarget?: number | null;
+    trackerResult?: number | null;
+    watcherTarget?: number | null;
+    watcherResult?: number[] | null;
+    consigliereTarget?: number | null;
+    consigliereResult?: string | null;
+    roleblockerTarget?: number | null;
+    poisonerTarget?: number | null;
+    framerTarget?: number | null;
+    serialKillerTarget?: number | null;
+    arsonistTarget?: number | null;
+    arsonistIgnite?: boolean | number;
   };
   eliminated: number | null;
-  winner: 'village' | 'mafia' | null;
+  winner: 'village' | 'mafia' | 'jester' | 'executioner' | 'serialkiller' | 'survivor' | null;
   log: string[];
   votes: Record<string, number>;
   phaseStartedAt: number;
@@ -23,6 +39,10 @@ export interface MafiaGameData {
     nightDuration: number;
     votingDuration: number;
   };
+  // Extended optional fields
+  poisoned?: { player: number; round: number }[];
+  arsonistDoused?: number[];
+  executionerTargets?: Record<string, number>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -118,7 +138,7 @@ export class ClassicMafiaService {
     return { data: d, message };
   }
 
-  checkWin(data: MafiaGameData): 'village' | 'mafia' | null {
+  checkWin(data: MafiaGameData): MafiaGameData['winner'] {
     const aliveRoles = data.alive.map(i => data.roles[String(i)]);
     const mafiaCount  = aliveRoles.filter(r => this.ROLE_DEFS[r]?.team === 'mafia').length;
     const villageCount = aliveRoles.filter(r => this.ROLE_DEFS[r]?.team === 'city').length;

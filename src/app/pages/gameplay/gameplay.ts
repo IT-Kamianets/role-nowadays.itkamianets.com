@@ -6,6 +6,7 @@ import { interval, Subscription, EMPTY } from 'rxjs';
 import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { ClassicMafiaService, MafiaGameData } from '../../services/classic-mafia.service';
+import { ExtendedMafiaService } from '../../services/extended-mafia.service';
 import { Game } from '../../models/game.model';
 
 @Component({
@@ -203,8 +204,8 @@ import { Game } from '../../models/game.model';
           <!-- ═══════════════════════════════════════════════════ NIGHT -->
           @if (effectivePhase === 'night') {
 
-            <!-- Villager: sleeping -->
-            @if (myRole === 'Villager') {
+            <!-- Sleeping roles: no night action -->
+            @if (isSleepingRole(myRole)) {
               <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-6 text-center">
                 <div class="text-4xl mb-3">😴</div>
                 <h3 class="text-base font-black text-amber-100 mb-1.5">Ви заснули...</h3>
@@ -212,8 +213,8 @@ import { Game } from '../../models/game.model';
               </div>
             }
 
-            <!-- Role player: pick target -->
-            @if (myRole === 'Mafia' || myRole === 'Doctor' || myRole === 'Detective') {
+            <!-- Standard night action roles (all except Arsonist) -->
+            @if (hasNightAction(myRole) && myRole !== 'Arsonist') {
               <div>
                 <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">{{ roleNightActionLabel }}</p>
                 <div class="space-y-2">
@@ -240,8 +241,46 @@ import { Game } from '../../models/game.model';
               </div>
             }
 
-            <!-- Night mafia chat -->
-            @if (myRole === 'Mafia') {
+            <!-- Arsonist special UI -->
+            @if (myRole === 'Arsonist') {
+              <div class="space-y-4">
+                <div>
+                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-orange-400/70 mb-3">🔥 Облити бензином</p>
+                  <div class="space-y-2">
+                    @for (p of nightTargets; track p.index) {
+                      <button (click)="submitNightAction(p.index)"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors text-left"
+                        [class]="myNightTarget === p.index ? 'border-orange-600/60 bg-orange-900/20' : 'bg-[#1a110a] border-[#2d1f10] hover:bg-orange-900/10'">
+                        <div class="w-9 h-9 rounded-xl bg-orange-700/80 flex items-center justify-center text-xs font-black text-amber-50 shrink-0">
+                          {{ p.index + 1 }}
+                        </div>
+                        <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
+                        @if (dousedPlayers.includes(p.index)) {
+                          <span class="text-[10px] text-orange-400 font-bold">Облито 🔥</span>
+                        }
+                        @if (myNightTarget === p.index) {
+                          <span class="text-[10px] text-amber-400 font-bold">Вибрано ✓</span>
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+                @if (dousedPlayers.length > 0) {
+                  <button (click)="submitArsonistIgnite()"
+                    class="w-full bg-red-700 hover:bg-red-600 text-white font-black py-3 rounded-xl uppercase tracking-wide text-sm transition-all active:scale-[0.97]">
+                    🔥 Підпалити всіх! ({{ dousedPlayers.length }})
+                  </button>
+                }
+                @if (hasSubmittedNightAction) {
+                  <div class="bg-green-950/40 border border-green-800/30 rounded-xl p-3 text-center">
+                    <p class="text-xs text-green-400">Дію подано. Очікування інших гравців...</p>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Mafia team night chat -->
+            @if (isMafiaTeamMember(myRole)) {
               <div>
                 <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-red-400/70 mb-3">🔪 Чат мафії</p>
                 <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden">
@@ -282,7 +321,7 @@ import { Game } from '../../models/game.model';
               @if (gameData?.eliminated !== null && gameData?.eliminated !== undefined) {
                 <div class="text-3xl mb-3">💀</div>
                 <h3 class="text-base font-black text-amber-100 mb-1">{{ playerName(gameData?.eliminated ?? 0) }} загинув</h3>
-                <p class="text-sm text-amber-100/50">{{ gameData?.roles?.[(gameData?.eliminated ?? 0).toString()] }}</p>
+                <p class="text-sm text-amber-100/50">{{ roleNameUk(gameData?.roles?.[(gameData?.eliminated ?? 0).toString()] ?? '') }}</p>
               } @else {
                 <div class="text-3xl mb-3">✨</div>
                 <h3 class="text-base font-black text-amber-100 mb-1">Ніхто не загинув!</h3>
@@ -290,7 +329,7 @@ import { Game } from '../../models/game.model';
               }
             </div>
 
-            <!-- Detective result (visible to detective player) -->
+            <!-- Detective result -->
             @if (myRole === 'Detective' && gameData?.night?.detectiveResult) {
               <div class="rounded-2xl p-4 border"
                 [class]="gameData?.night?.detectiveResult === 'mafia'
@@ -304,6 +343,57 @@ import { Game } from '../../models/game.model';
                   {{ playerName(gameData?.night?.detectiveTarget ?? 0) }} —
                   <strong>{{ gameData?.night?.detectiveResult === 'mafia' ? 'МАФІЯ' : 'МІСТЯНИН' }}</strong>
                 </p>
+              </div>
+            }
+
+            <!-- Sheriff result -->
+            @if (myRole === 'Sheriff' && gameData?.night?.sheriffResult) {
+              <div class="rounded-2xl p-4 border"
+                [class]="gameData?.night?.sheriffResult === 'mafia'
+                  ? 'bg-red-950/40 border-red-900/30'
+                  : 'bg-green-950/40 border-green-900/30'">
+                <p class="text-xs font-bold mb-2"
+                  [class]="gameData?.night?.sheriffResult === 'mafia' ? 'text-red-400' : 'text-green-400'">
+                  ⭐ Результат перевірки шерифа
+                </p>
+                <p class="text-sm text-amber-100/80">
+                  {{ playerName(gameData?.night?.sheriffTarget ?? 0) }} —
+                  <strong>{{ gameData?.night?.sheriffResult === 'mafia' ? 'МАФІЯ' : 'МІСТО' }}</strong>
+                </p>
+              </div>
+            }
+
+            <!-- Consigliere result -->
+            @if (myRole === 'Consigliere' && gameData?.night?.consigliereResult) {
+              <div class="rounded-2xl p-4 border bg-orange-950/40 border-orange-900/30">
+                <p class="text-xs font-bold text-orange-400 mb-2">📖 Результат розвідки</p>
+                <p class="text-sm text-amber-100/80">
+                  {{ playerName(gameData?.night?.consigliereTarget ?? 0) }} —
+                  <strong>{{ roleNameUk(gameData?.night?.consigliereResult ?? '') }}</strong>
+                </p>
+              </div>
+            }
+
+            <!-- Tracker result -->
+            @if (myRole === 'Tracker' && gameData?.night?.trackerResult !== null && gameData?.night?.trackerResult !== undefined) {
+              <div class="rounded-2xl p-4 border bg-cyan-950/40 border-cyan-900/30">
+                <p class="text-xs font-bold text-cyan-400 mb-2">👁️ Результат відстеження</p>
+                <p class="text-sm text-amber-100/80">
+                  {{ playerName(gameData?.night?.trackerTarget ?? 0) }} відвідав
+                  <strong>{{ playerName(gameData?.night?.trackerResult ?? 0) }}</strong>
+                </p>
+              </div>
+            }
+
+            <!-- Watcher result -->
+            @if (myRole === 'Watcher' && gameData?.night?.watcherResult?.length) {
+              <div class="rounded-2xl p-4 border bg-purple-950/40 border-purple-900/30">
+                <p class="text-xs font-bold text-purple-400 mb-2">🔭 Відвідувачі цілі</p>
+                <div class="space-y-1">
+                  @for (visitorIdx of (gameData?.night?.watcherResult ?? []); track visitorIdx) {
+                    <p class="text-sm text-amber-100/80">Гравець {{ visitorIdx + 1 }} — {{ playerName(visitorIdx) }}</p>
+                  }
+                </div>
               </div>
             }
 
@@ -445,16 +535,12 @@ import { Game } from '../../models/game.model';
 
             <!-- Winner banner -->
             <div class="relative overflow-hidden rounded-2xl p-8 border text-center"
-              [class]="gameData?.winner === 'mafia'
-                ? 'bg-red-950 border-red-800/50'
-                : 'bg-[#1a110a] border-amber-700/40'">
-              <div class="text-5xl mb-4">{{ gameData?.winner === 'mafia' ? '🔪' : '🛡️' }}</div>
+              [class]="winnerBannerClass()">
+              <div class="text-5xl mb-4">{{ winnerIcon() }}</div>
               <h2 class="text-2xl font-black text-amber-100 mb-2 uppercase tracking-wide">
-                {{ gameData?.winner === 'mafia' ? 'Мафія перемогла!' : 'Місто перемогло!' }}
+                {{ winnerLabel() }}
               </h2>
-              <p class="text-sm text-amber-100/50">
-                {{ gameData?.winner === 'mafia' ? 'Мафія захопила місто.' : 'Всіх мафіозів знешкоджено.' }}
-              </p>
+              <p class="text-sm text-amber-100/50">{{ winnerDescription() }}</p>
             </div>
 
             <!-- All roles reveal -->
@@ -464,13 +550,12 @@ import { Game } from '../../models/game.model';
                 @for (p of allPlayers; track p.index) {
                   <div class="bg-[#1a110a] border border-[#2d1f10] rounded-xl flex items-center gap-3 px-4 py-3" [class]="!p.isAlive ? 'opacity-40' : ''">
                     <div class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white shrink-0"
-                      [class]="roleDef(p.role).team === 'mafia' ? 'bg-red-700' : 'bg-amber-700'">
+                      [class]="roleTeamBadgeClass(p.role)">
                       {{ p.index + 1 }}
                     </div>
                     <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                    <span class="text-xs font-semibold"
-                      [class]="roleDef(p.role).team === 'mafia' ? 'text-red-400' : 'text-amber-400'">
-                      {{ p.role }}
+                    <span class="text-xs font-semibold" [class]="roleTeamTextClass(p.role)">
+                      {{ roleIcon(p.role) }} {{ roleNameUk(p.role) }}
                     </span>
                     @if (!p.isAlive) {
                       <span class="text-[10px] text-amber-100/25 ml-1">✝</span>
@@ -540,6 +625,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   constructor(
     private gameService: GameService,
     private classicMafia: ClassicMafiaService,
+    private extendedMafia: ExtendedMafiaService,
     private route: ActivatedRoute,
     private router: Router,
   ) {}
@@ -555,7 +641,6 @@ export class GameplayComponent implements OnInit, OnDestroy {
       ).subscribe(game => {
         if (!game || typeof game !== 'object') return;
 
-        const prevStatus = this.currentGame()?.status;
         const prevPhase = (this.currentGame()?.data as Partial<MafiaGameData>)?.phase;
         const newPhase  = (game.data as Partial<MafiaGameData>)?.phase;
         if (prevPhase === 'voting' && newPhase !== 'voting') {
@@ -573,12 +658,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
             this.startAutoReveal();
           }
         }
-        // Split layout: activate for mid-game joins (no role reveal)
         const isActivePhase = ['night', 'day', 'voting'].includes(newPhase ?? '');
         if (isActivePhase && !this.splitLayoutVisible() && !this.showRoleReveal()) {
           this.splitLayoutVisible.set(true);
         }
-        // Phase transition animation
         if (prevPhase && prevPhase !== newPhase && isActivePhase && this.splitLayoutVisible()) {
           if (prevPhase === 'night' && newPhase === 'day') {
             this.transitionVideo.set('/night-to-day.mp4');
@@ -598,9 +681,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       });
     }
 
-    // 1-second interval: update countdowns + trigger phase transitions
     this.timerInterval = setInterval(() => {
-      // Lobby expiry countdown (20 min from game creation via ObjectId timestamp)
       const id = this.gameId;
       if (id && this.effectivePhase === 'lobby') {
         const created = parseInt(id.substring(0, 8), 16) * 1000;
@@ -610,11 +691,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
       const d = this.gameData;
 
-      // Day timer
       if (d?.phase === 'day' && d.phaseStartedAt) {
         const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-        const dayDur = d.settings?.dayDuration ?? 60;
-        const left = Math.max(0, dayDur - elapsed);
+        const left = Math.max(0, (d.settings?.dayDuration ?? 60) - elapsed);
         this.daySecondsLeft.set(left);
         if (left === 0 && !this.dayTransitionSent) {
           this.dayTransitionSent = true;
@@ -625,11 +704,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
         this.dayTransitionSent = false;
       }
 
-      // Night timer
       if (d?.phase === 'night' && d.phaseStartedAt) {
         const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-        const nightDur = d.settings?.nightDuration ?? 30;
-        const left = Math.max(0, nightDur - elapsed);
+        const left = Math.max(0, (d.settings?.nightDuration ?? 30) - elapsed);
         this.nightSecondsLeft.set(left);
         if (left === 0 && !this.nightTransitionSent) {
           this.nightTransitionSent = true;
@@ -640,11 +717,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
         this.nightTransitionSent = false;
       }
 
-      // Voting timer
       if (d?.phase === 'voting' && d.phaseStartedAt) {
         const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-        const voteDur = d.settings?.votingDuration ?? 30;
-        const left = Math.max(0, voteDur - elapsed);
+        const left = Math.max(0, (d.settings?.votingDuration ?? 30) - elapsed);
         this.votingSecondsLeft.set(left);
         if (left === 0 && !this.votingTransitionSent) {
           this.votingTransitionSent = true;
@@ -691,7 +766,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   get myRoleDef() {
     const role = this.myRole;
     if (!role) return null;
-    return this.classicMafia.ROLE_DEFS[role] ?? null;
+    return this.extendedMafia.ROLE_DEFS[role] ?? this.classicMafia.ROLE_DEFS[role] ?? null;
   }
 
   get playerIndices(): number[] {
@@ -715,7 +790,6 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   get votingTargets() {
-    // Cannot vote for yourself
     return this.alivePlayers.filter(p => p.index !== this.myIndexVal);
   }
 
@@ -750,6 +824,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
     return d.votes[String(playerIndex)] !== undefined;
   }
 
+  get dousedPlayers(): number[] {
+    return this.gameData?.arsonistDoused ?? [];
+  }
+
   // ── Actions ───────────────────────────────────────────────────────────
 
   back() { this.router.navigate(['/home']); }
@@ -758,8 +836,20 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const g = this.currentGame();
     if (!g) return;
     const raw = localStorage.getItem('gameSettings_' + this.gameId);
-    const settings = raw ? JSON.parse(raw) : { dayDuration: 60, nightDuration: 30, votingDuration: 30 };
-    const data = this.classicMafia.initGameData(g.players.length, settings);
+    const parsed = raw ? JSON.parse(raw) : {};
+    const settings = {
+      dayDuration: parsed.dayDuration ?? 60,
+      nightDuration: parsed.nightDuration ?? 30,
+      votingDuration: parsed.votingDuration ?? 30,
+    };
+    const mode = g.mode;
+    let data: MafiaGameData;
+    if (mode === 'Classic') {
+      data = this.classicMafia.initGameData(g.players.length, settings);
+    } else {
+      const customRoles = parsed.customRoles ?? undefined;
+      data = this.extendedMafia.initGameData(g.players.length, settings, customRoles);
+    }
     this.loading.set(true);
     this.errorMsg.set(null);
     this.gameService.updateGame(this.gameId, { status: 'running', data }).subscribe({
@@ -791,12 +881,23 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const role = this.myRole;
     if (!role) return;
     const roleToField: Record<string, string> = {
-      Mafia: 'mafiaTarget', Doctor: 'doctorTarget', Detective: 'detectiveTarget',
+      Mafia: 'mafiaTarget', Godfather: 'mafiaTarget',
+      Doctor: 'doctorTarget', Detective: 'detectiveTarget',
+      Bodyguard: 'bodyguardTarget', Sheriff: 'sheriffTarget',
+      Tracker: 'trackerTarget', Watcher: 'watcherTarget',
+      Consigliere: 'consigliereTarget', Roleblocker: 'roleblockerTarget',
+      Poisoner: 'poisonerTarget', Framer: 'framerTarget',
+      SerialKiller: 'serialKillerTarget', Arsonist: 'arsonistTarget',
     };
     const field = roleToField[role];
     if (!field) return;
-
     this.gameService.submitNightAction(this.gameId, field, target).subscribe({
+      next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
+    });
+  }
+
+  submitArsonistIgnite() {
+    this.gameService.submitNightAction(this.gameId, 'arsonistIgnite', 1 as any).subscribe({
       next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
     });
   }
@@ -815,8 +916,16 @@ export class GameplayComponent implements OnInit, OnDestroy {
     if (!this.isCreator) { this.nightTransitionSent = false; return; }
     const d = this.gameData;
     if (!d || d.phase !== 'night') { this.nightTransitionSent = false; return; }
-    const { data: resolved } = this.classicMafia.resolveNight(d);
-    const winner = this.classicMafia.checkWin(resolved);
+    const mode = this.currentGame()?.mode;
+    let resolved: MafiaGameData;
+    let winner: MafiaGameData['winner'];
+    if (mode === 'Classic') {
+      resolved = this.classicMafia.resolveNight(d).data;
+      winner = this.classicMafia.checkWin(resolved);
+    } else {
+      resolved = this.extendedMafia.resolveNight(d).data;
+      winner = this.extendedMafia.checkWin(resolved);
+    }
     const finalData: MafiaGameData = winner
       ? { ...resolved, phase: 'finished', winner }
       : { ...resolved, phaseStartedAt: Date.now() };
@@ -839,8 +948,16 @@ export class GameplayComponent implements OnInit, OnDestroy {
     for (const [idx, cnt] of Object.entries(tally)) {
       if (aliveSet.has(+idx) && cnt > maxVotes) { maxVotes = cnt; eliminated = +idx; }
     }
-    const resolved = this.classicMafia.resolveVoting(d, eliminated);
-    const winner = this.classicMafia.checkWin(resolved);
+    const mode = this.currentGame()?.mode;
+    let resolved: MafiaGameData;
+    let winner: MafiaGameData['winner'];
+    if (mode === 'Classic') {
+      resolved = this.classicMafia.resolveVoting(d, eliminated);
+      winner = this.classicMafia.checkWin(resolved);
+    } else {
+      resolved = this.extendedMafia.resolveVoting(d, eliminated);
+      winner = resolved.winner ?? this.extendedMafia.checkWin(resolved);
+    }
     const finalData: MafiaGameData = winner
       ? { ...resolved, phase: 'finished', winner }
       : { ...resolved, phaseStartedAt: Date.now() };
@@ -902,31 +1019,85 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   // ── Night action helpers ──────────────────────────────────────────────
 
+  isSleepingRole(role: string | null): boolean {
+    const sleepers = ['Villager', 'Priest', 'Mayor', 'Survivor', 'Jester', 'Executioner'];
+    return !!role && sleepers.includes(role);
+  }
+
+  hasNightAction(role: string | null): boolean {
+    const actors = ['Mafia', 'Godfather', 'Doctor', 'Detective', 'Bodyguard', 'Sheriff',
+      'Tracker', 'Watcher', 'Consigliere', 'Roleblocker', 'Poisoner', 'Framer',
+      'SerialKiller', 'Arsonist'];
+    return !!role && actors.includes(role);
+  }
+
+  isMafiaTeamMember(role: string | null): boolean {
+    return !!role && this.extendedMafia.ROLE_DEFS[role]?.team === 'mafia';
+  }
+
   get hasSubmittedNightAction(): boolean {
     const d = this.gameData;
     const role = this.myRole;
     if (!d || !role) return false;
-    if (role === 'Mafia')      return d.night.mafiaTarget !== null;
-    if (role === 'Doctor')     return d.night.doctorTarget !== null;
-    if (role === 'Detective')  return d.night.detectiveTarget !== null;
-    return true;
+    const n = d.night;
+    switch (role) {
+      case 'Mafia':
+      case 'Godfather':    return n.mafiaTarget !== null;
+      case 'Doctor':       return n.doctorTarget !== null;
+      case 'Detective':    return n.detectiveTarget !== null;
+      case 'Bodyguard':    return n.bodyguardTarget !== null && n.bodyguardTarget !== undefined;
+      case 'Sheriff':      return n.sheriffTarget !== null && n.sheriffTarget !== undefined;
+      case 'Tracker':      return n.trackerTarget !== null && n.trackerTarget !== undefined;
+      case 'Watcher':      return n.watcherTarget !== null && n.watcherTarget !== undefined;
+      case 'Consigliere':  return n.consigliereTarget !== null && n.consigliereTarget !== undefined;
+      case 'Roleblocker':  return n.roleblockerTarget !== null && n.roleblockerTarget !== undefined;
+      case 'Poisoner':     return n.poisonerTarget !== null && n.poisonerTarget !== undefined;
+      case 'Framer':       return n.framerTarget !== null && n.framerTarget !== undefined;
+      case 'SerialKiller': return n.serialKillerTarget !== null && n.serialKillerTarget !== undefined;
+      case 'Arsonist':     return (n.arsonistTarget !== null && n.arsonistTarget !== undefined) || !!n.arsonistIgnite;
+      default: return true;
+    }
   }
 
   get myNightTarget(): number | null {
     const d = this.gameData;
     const role = this.myRole;
     if (!d || !role) return null;
-    if (role === 'Mafia')     return d.night.mafiaTarget;
-    if (role === 'Doctor')    return d.night.doctorTarget;
-    if (role === 'Detective') return d.night.detectiveTarget;
-    return null;
+    const n = d.night;
+    switch (role) {
+      case 'Mafia':
+      case 'Godfather':    return n.mafiaTarget;
+      case 'Doctor':       return n.doctorTarget;
+      case 'Detective':    return n.detectiveTarget;
+      case 'Bodyguard':    return n.bodyguardTarget ?? null;
+      case 'Sheriff':      return n.sheriffTarget ?? null;
+      case 'Tracker':      return n.trackerTarget ?? null;
+      case 'Watcher':      return n.watcherTarget ?? null;
+      case 'Consigliere':  return n.consigliereTarget ?? null;
+      case 'Roleblocker':  return n.roleblockerTarget ?? null;
+      case 'Poisoner':     return n.poisonerTarget ?? null;
+      case 'Framer':       return n.framerTarget ?? null;
+      case 'SerialKiller': return n.serialKillerTarget ?? null;
+      case 'Arsonist':     return n.arsonistTarget ?? null;
+      default: return null;
+    }
   }
 
   get roleNightActionLabel(): string {
     const map: Record<string, string> = {
-      Mafia:     '🔪 Оберіть жертву',
-      Doctor:    '💊 Оберіть кого захистити',
-      Detective: '🔍 Оберіть кого перевірити',
+      Mafia:       '🔪 Оберіть жертву',
+      Godfather:   '🎭 Оберіть жертву (голова мафії)',
+      Doctor:      '💊 Оберіть кого захистити',
+      Detective:   '🔍 Оберіть кого перевірити',
+      Bodyguard:   '🛡️ Оберіть кого охороняти',
+      Sheriff:     '⭐ Оберіть кого перевірити',
+      Tracker:     '👁️ Оберіть кого відстежити',
+      Watcher:     '🔭 Оберіть за ким стежити',
+      Consigliere: '📖 Оберіть чию роль дізнатись',
+      Roleblocker: '🚫 Оберіть кого заблокувати',
+      Poisoner:    '☠️ Оберіть кого отруїти',
+      Framer:      '🖼️ Оберіть кого підставити',
+      SerialKiller:'🗡️ Оберіть жертву',
     };
     return map[this.myRole ?? ''] ?? '';
   }
@@ -942,15 +1113,161 @@ export class GameplayComponent implements OnInit, OnDestroy {
   // ── UI helpers ────────────────────────────────────────────────────────
 
   roleDef(role: string) {
-    return this.classicMafia.ROLE_DEFS[role] ?? null;
+    return this.extendedMafia.ROLE_DEFS[role] ?? this.classicMafia.ROLE_DEFS[role] ?? null;
+  }
+
+  roleTeamBadgeClass(role: string): string {
+    const team = this.roleDef(role)?.team;
+    if (team === 'mafia') return 'bg-red-700';
+    if (team === 'neutral') return 'bg-purple-700';
+    return 'bg-amber-700';
+  }
+
+  roleTeamTextClass(role: string): string {
+    const team = this.roleDef(role)?.team;
+    if (team === 'mafia') return 'text-red-400';
+    if (team === 'neutral') return 'text-purple-400';
+    return 'text-amber-400';
+  }
+
+  roleIcon(role: string): string {
+    const map: Record<string, string> = {
+      Villager: '🏘️', Detective: '🔍', Doctor: '💊', Bodyguard: '🛡️',
+      Sheriff: '⭐', Tracker: '👁️', Watcher: '🔭', Priest: '✝️', Mayor: '🎖️',
+      Mafia: '🔪', Godfather: '🎭', Consigliere: '📖', Roleblocker: '🚫',
+      Poisoner: '☠️', Framer: '🖼️',
+      Jester: '🤡', Executioner: '⚖️', Survivor: '🏕️', SerialKiller: '🗡️', Arsonist: '🔥',
+    };
+    return map[role] ?? '❓';
+  }
+
+  revealCardBg(role: string): string {
+    const map: Record<string, string> = {
+      Mafia:       'bg-gradient-to-br from-red-950 to-rose-950 border-red-600/40',
+      Godfather:   'bg-gradient-to-br from-red-950 to-red-950 border-red-800/60',
+      Consigliere: 'bg-gradient-to-br from-orange-950 to-red-950 border-orange-600/40',
+      Roleblocker: 'bg-gradient-to-br from-orange-950 to-amber-950 border-orange-500/40',
+      Poisoner:    'bg-gradient-to-br from-violet-950 to-purple-950 border-violet-600/40',
+      Framer:      'bg-gradient-to-br from-rose-950 to-pink-950 border-rose-600/40',
+      Detective:   'bg-gradient-to-br from-blue-950 to-indigo-950 border-blue-600/40',
+      Doctor:      'bg-gradient-to-br from-green-950 to-emerald-950 border-green-600/40',
+      Bodyguard:   'bg-gradient-to-br from-teal-950 to-cyan-950 border-teal-600/40',
+      Sheriff:     'bg-gradient-to-br from-yellow-950 to-amber-950 border-yellow-600/40',
+      Tracker:     'bg-gradient-to-br from-cyan-950 to-sky-950 border-cyan-600/40',
+      Watcher:     'bg-gradient-to-br from-purple-950 to-violet-950 border-purple-600/40',
+      Priest:      'bg-gradient-to-br from-slate-800 to-slate-900 border-white/20',
+      Mayor:       'bg-gradient-to-br from-amber-950 to-yellow-950 border-amber-600/40',
+      Villager:    'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40',
+      Jester:      'bg-gradient-to-br from-pink-950 to-fuchsia-950 border-pink-600/40',
+      Executioner: 'bg-gradient-to-br from-indigo-950 to-blue-950 border-indigo-600/40',
+      Survivor:    'bg-gradient-to-br from-lime-950 to-green-950 border-lime-600/40',
+      SerialKiller:'bg-gradient-to-br from-rose-950 to-red-950 border-rose-800/60',
+      Arsonist:    'bg-gradient-to-br from-orange-950 to-red-950 border-orange-500/40',
+    };
+    return map[role] ?? 'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40';
+  }
+
+  revealRoleIcon(role: string): string {
+    return this.roleIcon(role);
+  }
+
+  revealGlowColor(role: string): string {
+    const map: Record<string, string> = {
+      Mafia: 'bg-red-500', Godfather: 'bg-red-700', Consigliere: 'bg-orange-500',
+      Roleblocker: 'bg-orange-400', Poisoner: 'bg-violet-500', Framer: 'bg-rose-500',
+      Detective: 'bg-blue-500', Doctor: 'bg-green-500', Bodyguard: 'bg-teal-500',
+      Sheriff: 'bg-yellow-500', Tracker: 'bg-cyan-500', Watcher: 'bg-purple-500',
+      Priest: 'bg-white', Mayor: 'bg-amber-500', Villager: 'bg-slate-400',
+      Jester: 'bg-pink-500', Executioner: 'bg-indigo-500', Survivor: 'bg-lime-500',
+      SerialKiller: 'bg-rose-700', Arsonist: 'bg-orange-500',
+    };
+    return map[role] ?? 'bg-white';
+  }
+
+  revealBadge(role: string): string {
+    const team = this.roleDef(role)?.team;
+    if (team === 'mafia')   return 'bg-red-500/20 text-red-300 border-red-500/40';
+    if (team === 'neutral') return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+    return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+  }
+
+  roleCardImage(role: string): string {
+    const map: Record<string, string> = {
+      Mafia: '/card-mafia.jpg',
+      Doctor: '/card-doctor.jpg',
+      Detective: '/card-detective.jpg',
+      Villager: '/card-villager.jpg',
+    };
+    return map[role] ?? '/card-back.jpg';
+  }
+
+  // ── Role name localization ────────────────────────────────────────────
+
+  private readonly ROLE_NAMES_UK: Record<string, string> = {
+    Villager: 'Житель', Detective: 'Детектив', Doctor: 'Лікар',
+    Bodyguard: 'Охоронець', Sheriff: 'Шериф', Tracker: 'Стежник',
+    Watcher: 'Спостерігач', Priest: 'Священик', Mayor: 'Мер',
+    Mafia: 'Мафія', Godfather: 'Хрещений батько', Consigliere: 'Консільєрі',
+    Roleblocker: 'Блокувальник', Poisoner: 'Отруювач', Framer: 'Провокатор',
+    Jester: 'Блазень', Executioner: 'Кат', Survivor: 'Вижилець',
+    SerialKiller: 'Серійний вбивця', Arsonist: 'Підпалювач',
+  };
+
+  roleNameUk(role: string): string {
+    return this.ROLE_NAMES_UK[role] ?? role;
+  }
+
+  // ── Winner helpers ────────────────────────────────────────────────────
+
+  winnerBannerClass(): string {
+    const w = this.gameData?.winner;
+    switch (w) {
+      case 'mafia':        return 'bg-red-950 border-red-800/50';
+      case 'jester':       return 'bg-pink-950 border-pink-800/50';
+      case 'executioner':  return 'bg-indigo-950 border-indigo-800/50';
+      case 'serialkiller': return 'bg-rose-950 border-rose-800/50';
+      case 'survivor':     return 'bg-lime-950 border-lime-800/50';
+      default:             return 'bg-[#1a110a] border-amber-700/40';
+    }
+  }
+
+  winnerIcon(): string {
+    const map: Record<string, string> = {
+      village: '🛡️', mafia: '🔪', jester: '🤡',
+      executioner: '⚖️', serialkiller: '🗡️', survivor: '🏕️',
+    };
+    return map[this.gameData?.winner ?? ''] ?? '🏆';
+  }
+
+  winnerLabel(): string {
+    const map: Record<string, string> = {
+      village: 'Місто перемогло!', mafia: 'Мафія перемогла!',
+      jester: 'Блазень переміг!', executioner: 'Кат переміг!',
+      serialkiller: 'Серійний вбивця переміг!', survivor: 'Вижилець переміг!',
+    };
+    return map[this.gameData?.winner ?? ''] ?? 'Гра завершена';
+  }
+
+  winnerDescription(): string {
+    const map: Record<string, string> = {
+      village: 'Всіх мафіозів знешкоджено.',
+      mafia: 'Мафія захопила місто.',
+      jester: 'Блазень домігся свого і був виключений.',
+      executioner: 'Ціль ката була усунена голосуванням.',
+      serialkiller: 'Серійний вбивця залишився єдиним.',
+      survivor: 'Вижилець дожив до кінця гри.',
+    };
+    return map[this.gameData?.winner ?? ''] ?? '';
+  }
+
+  formatLobbyTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
   teamLabel(team: string): string {
     return team === 'mafia' ? 'Мафія' : 'Місто';
-  }
-
-  roleIcon(team: string): string {
-    return team === 'mafia' ? '🔪' : '🛡️';
   }
 
   teamAccent(team: string): string {
@@ -967,55 +1284,5 @@ export class GameplayComponent implements OnInit, OnDestroy {
     return team === 'mafia'
       ? 'bg-[#1a0505] border border-red-900/50'
       : 'bg-[#1a110a] border border-[#2d1f10]';
-  }
-
-  revealCardBg(role: string): string {
-    const map: Record<string, string> = {
-      Mafia:     'bg-gradient-to-br from-red-950 to-rose-950 border-red-600/40',
-      Doctor:    'bg-gradient-to-br from-green-950 to-emerald-950 border-green-600/40',
-      Detective: 'bg-gradient-to-br from-blue-950 to-indigo-950 border-blue-600/40',
-      Villager:  'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40',
-    };
-    return map[role] ?? 'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40';
-  }
-
-  revealRoleIcon(role: string): string {
-    const map: Record<string, string> = {
-      Mafia: '🔪', Doctor: '💊', Detective: '🔍', Villager: '🏘️',
-    };
-    return map[role] ?? '❓';
-  }
-
-  revealGlowColor(role: string): string {
-    const map: Record<string, string> = {
-      Mafia: 'bg-red-500', Doctor: 'bg-green-500', Detective: 'bg-blue-500', Villager: 'bg-slate-400',
-    };
-    return map[role] ?? 'bg-white';
-  }
-
-  formatLobbyTime(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  }
-
-  roleCardImage(role: string): string {
-    const map: Record<string, string> = {
-      Mafia: '/card-mafia.jpg',
-      Doctor: '/card-doctor.jpg',
-      Detective: '/card-detective.jpg',
-      Villager: '/card-villager.jpg',
-    };
-    return map[role] ?? '';
-  }
-
-  revealBadge(role: string): string {
-    const map: Record<string, string> = {
-      Mafia:     'bg-red-500/20 text-red-300 border-red-500/40',
-      Doctor:    'bg-green-500/20 text-green-300 border-green-500/40',
-      Detective: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-      Villager:  'bg-slate-500/20 text-slate-300 border-slate-500/40',
-    };
-    return map[role] ?? 'bg-white/10 text-white/60 border-white/20';
   }
 }

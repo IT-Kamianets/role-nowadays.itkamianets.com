@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -133,6 +133,56 @@ interface ModeOption {
             </div>
           </div>
 
+          <!-- Custom Role Picker — only for Custom mode -->
+          @if (selectedMode() === 'Custom') {
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Ролі гри</p>
+
+              @for (group of roleGroups; track group.label) {
+                <div class="mb-4">
+                  <p class="text-xs font-bold uppercase tracking-widest mb-2"
+                    [class]="group.label === 'Мафія' ? 'text-red-400/70' : group.label === 'Нейтральні' ? 'text-purple-400/70' : 'text-amber-400/70'">
+                    {{ group.label }}
+                  </p>
+                  <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
+                    @for (role of group.roles; track role) {
+                      <div class="flex items-center gap-3 px-4 py-3">
+                        <span class="text-lg w-7 text-center shrink-0">{{ roleIcons[role] }}</span>
+                        <span class="text-sm text-amber-100/80 flex-1">{{ roleNamesUk[role] || role }}</span>
+                        <div class="flex items-center gap-2">
+                          <button (click)="adjustRole(role, -1)"
+                            class="w-8 h-8 rounded-lg bg-[#2d1f10] text-amber-100/60 font-black text-base flex items-center justify-center active:bg-amber-900/30 transition-colors">
+                            −
+                          </button>
+                          <span class="w-6 text-center text-sm font-black tabular-nums"
+                            [class]="(customRoles()[role] || 0) > 0 ? 'text-amber-400' : 'text-amber-100/20'">
+                            {{ customRoles()[role] || 0 }}
+                          </span>
+                          <button (click)="adjustRole(role, 1)"
+                            class="w-8 h-8 rounded-lg bg-[#2d1f10] text-amber-100/60 font-black text-base flex items-center justify-center active:bg-amber-900/30 transition-colors">
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- Role count footer -->
+              <div class="flex items-center justify-between px-1">
+                <span class="text-xs text-amber-100/40">Всього ролей</span>
+                <span class="text-sm font-black tabular-nums"
+                  [class]="customRolesTotal() > playerLimit() ? 'text-red-400' : customRolesTotal() === playerLimit() ? 'text-green-400' : 'text-amber-100/50'">
+                  {{ customRolesTotal() }} / {{ playerLimit() }}
+                </span>
+              </div>
+              @if (customRolesError()) {
+                <p class="text-xs text-red-400 mt-2 text-center">{{ customRolesError() }}</p>
+              }
+            </div>
+          }
+
           <!-- Summary -->
           <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4 space-y-3">
             <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30">Підсумок</p>
@@ -175,12 +225,49 @@ export class CreateGameComponent {
     { value: 'Custom',   label: 'Власна',    icon: '⚙️', desc: 'Налаштовуй ролі повністю вручну' },
   ];
 
+  readonly roleGroups = [
+    { label: 'Місто',      roles: ['Villager', 'Detective', 'Doctor', 'Bodyguard', 'Sheriff', 'Tracker', 'Watcher', 'Priest', 'Mayor'] },
+    { label: 'Мафія',      roles: ['Mafia', 'Godfather', 'Consigliere', 'Roleblocker', 'Poisoner', 'Framer'] },
+    { label: 'Нейтральні', roles: ['Jester', 'Executioner', 'Survivor', 'SerialKiller', 'Arsonist'] },
+  ];
+
+  readonly roleNamesUk: Record<string, string> = {
+    Villager: 'Житель', Detective: 'Детектив', Doctor: 'Лікар',
+    Bodyguard: 'Охоронець', Sheriff: 'Шериф', Tracker: 'Стежник',
+    Watcher: 'Спостерігач', Priest: 'Священик', Mayor: 'Мер',
+    Mafia: 'Мафія', Godfather: 'Хрещений батько', Consigliere: 'Консільєрі',
+    Roleblocker: 'Блокувальник', Poisoner: 'Отруювач', Framer: 'Провокатор',
+    Jester: 'Блазень', Executioner: 'Кат', Survivor: 'Вижилець',
+    SerialKiller: 'Серійний вбивця', Arsonist: 'Підпалювач',
+  };
+
+  readonly roleIcons: Record<string, string> = {
+    Villager: '🏘️', Detective: '🔍', Doctor: '💊', Bodyguard: '🛡️',
+    Sheriff: '⭐', Tracker: '👁️', Watcher: '🔭', Priest: '✝️', Mayor: '🎖️',
+    Mafia: '🔪', Godfather: '🎭', Consigliere: '📖', Roleblocker: '🚫',
+    Poisoner: '☠️', Framer: '🖼️',
+    Jester: '🤡', Executioner: '⚖️', Survivor: '🏕️', SerialKiller: '🗡️', Arsonist: '🔥',
+  };
+
   selectedMode = signal<GameMode>('Classic');
   playerLimit = signal(8);
   dayDuration = signal(60);
   nightDuration = signal(30);
   votingDuration = signal(30);
   loading = signal(false);
+  customRoles = signal<Record<string, number>>({ Mafia: 1, Villager: 2 });
+
+  customRolesTotal = computed(() => Object.values(this.customRoles()).reduce((a, b) => a + b, 0));
+
+  customRolesError = computed(() => {
+    if (this.selectedMode() !== 'Custom') return null;
+    const total = this.customRolesTotal();
+    const limit = this.playerLimit();
+    if (total > limit) return `Кількість ролей (${total}) перевищує ліміт гравців (${limit})`;
+    const mafiaCount = (this.customRoles()['Mafia'] ?? 0) + (this.customRoles()['Godfather'] ?? 0);
+    if (mafiaCount < 1) return 'Потрібна хоча б 1 роль мафії (Mafia або Godfather)';
+    return null;
+  });
 
   constructor(private gameService: GameService, private router: Router) {}
 
@@ -188,18 +275,29 @@ export class CreateGameComponent {
     return this.modeOptions.find(o => o.value === mode)?.label ?? mode;
   }
 
+  adjustRole(role: string, delta: number) {
+    const current = this.customRoles()[role] ?? 0;
+    const next = Math.max(0, current + delta);
+    this.customRoles.update(r => ({ ...r, [role]: next }));
+  }
+
   back() { this.router.navigate(['/home']); }
 
   create() {
+    if (this.customRolesError()) return;
     this.loading.set(true);
     this.gameService.createGame(this.selectedMode(), this.playerLimit()).subscribe({
       next: (game) => {
         if (game?._id) {
-          localStorage.setItem('gameSettings_' + game._id, JSON.stringify({
+          const settings: Record<string, any> = {
             dayDuration: this.dayDuration(),
             nightDuration: this.nightDuration(),
             votingDuration: this.votingDuration(),
-          }));
+          };
+          if (this.selectedMode() === 'Custom') {
+            settings['customRoles'] = this.customRoles();
+          }
+          localStorage.setItem('gameSettings_' + game._id, JSON.stringify(settings));
           this.router.navigate(['/gameplay', game._id]);
         } else {
           this.loading.set(false);
