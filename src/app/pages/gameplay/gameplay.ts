@@ -13,6 +13,16 @@ import { Game } from '../../models/game.model';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
+    <!-- Phase Transition Video Overlay -->
+    @if (transitionVideo()) {
+      <div class="fixed inset-0 z-50 bg-black">
+        <video [src]="transitionVideo()!" autoplay muted playsinline
+          class="w-full h-full object-cover"
+          (ended)="onTransitionEnd()">
+        </video>
+      </div>
+    }
+
     <!-- Role Reveal Overlay -->
     @if (showRoleReveal() && myRoleDef && myRole) {
       <div class="fixed inset-0 z-50 flex items-center justify-center bg-black px-8"
@@ -509,6 +519,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   cardFlipped = signal(false);
   splitLayoutVisible = signal(false);
   phaseAnimKey = signal(0);
+  transitionVideo = signal<string | null>(null);
 
   myIndexVal = -1;
   dayChatText = '';
@@ -569,7 +580,13 @@ export class GameplayComponent implements OnInit, OnDestroy {
         }
         // Phase transition animation
         if (prevPhase && prevPhase !== newPhase && isActivePhase && this.splitLayoutVisible()) {
-          this.phaseAnimKey.update(k => k + 1);
+          if (prevPhase === 'night' && newPhase === 'day') {
+            this.transitionVideo.set('/night-to-day.mp4');
+          } else if (prevPhase === 'day' && newPhase === 'night') {
+            this.transitionVideo.set('/day-to-night.mp4');
+          } else {
+            this.phaseAnimKey.update(k => k + 1);
+          }
         }
       });
 
@@ -862,6 +879,11 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.gameService.sendMessage(this.gameId, text, 'night').subscribe({
       next: msg => { if (msg) this.allMessages.update(msgs => [...msgs, msg]); },
     });
+  }
+
+  onTransitionEnd() {
+    this.transitionVideo.set(null);
+    this.phaseAnimKey.update(k => k + 1);
   }
 
   private startAutoReveal() {

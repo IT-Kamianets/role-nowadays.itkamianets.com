@@ -75,21 +75,21 @@ export class GameCardComponent {
   };
 
   readonly modeHeaderBg: Record<string, string> = {
-    Classic:  'bg-red-600',
+    Classic:  'bg-amber-700',
     Extended: 'bg-violet-600',
     Custom:   'bg-teal-600',
   };
 
   readonly modeProgressBar: Record<string, string> = {
-    Classic:  'bg-red-500',
+    Classic:  'bg-amber-600',
     Extended: 'bg-violet-500',
     Custom:   'bg-teal-500',
   };
 
   readonly modeButtonBg: Record<string, string> = {
-    Classic:  'bg-red-600',
-    Extended: 'bg-violet-600',
-    Custom:   'bg-teal-600',
+    Classic:  'bg-amber-700 hover:bg-amber-600',
+    Extended: 'bg-violet-600 hover:bg-violet-500',
+    Custom:   'bg-teal-600 hover:bg-teal-500',
   };
 
   get lobbyMinutesLeft(): number {

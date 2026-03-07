@@ -1,59 +1,105 @@
-# RoleNowadays
+# Role Nowadays
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.2.
+> Mobile-first social deduction game inspired by classic Mafia — play with friends in real time, no app install needed.
 
-## Development server
+**Live:** [role-nowadays.itkamianets.com](https://role-nowadays.itkamianets.com)
 
-To start a local development server, run:
+---
 
-```bash
-ng serve
+## What is this?
+
+Role Nowadays is a browser-based multiplayer Mafia game designed for mobile. Create a private room, share the PIN, and play with friends in seconds. The server drives all game state — roles are assigned secretly, night actions resolved automatically, and phase transitions happen in real time across all devices.
+
+---
+
+## Gameplay
+
+Each game alternates between two phases:
+
+**Night** — special roles act in secret:
+- Mafia selects a target to eliminate
+- Doctor protects a player
+- Detective investigates a player's alignment
+
+**Day** — all players discuss, then vote. The player with the most votes is eliminated.
+
+The game ends when:
+- All mafia are eliminated → **Village wins**
+- Mafia count equals or exceeds villagers → **Mafia wins**
+
+### Roles (Classic mode)
+
+| Role | Team | Ability |
+|------|------|---------|
+| Villager | Village | No special ability |
+| Detective | Village | Investigates one player per night |
+| Doctor | Village | Protects one player per night |
+| Mafia | Mafia | Votes to eliminate a player each night |
+
+---
+
+## Features
+
+- Real-time multiplayer via polling (no WebSocket dependency)
+- Role reveal animation on game start
+- Phase transition videos (Night ↔ Day)
+- Split-screen header: current phase + your role card, always visible
+- Private games with PIN code
+- Mafia night chat
+- Detective result reveal
+- Vote tracking with live progress
+- Works on mobile browsers, installable via Capacitor
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Angular 21 (standalone components) |
+| Styling | Tailwind CSS v3 |
+| Mobile wrapper | Capacitor (`com.itkamianets.rolenow`) |
+| Backend | REST API at `api.webart.work` |
+| Hosting | GitHub Pages (custom domain via CNAME) |
+
+---
+
+## Project Structure
+
+```
+src/app/
+├── pages/
+│   ├── home/           # Game list, filters, join
+│   ├── create-game/    # Mode selection, player count, privacy
+│   └── gameplay/       # Full game UI — phases, role, timers, chat, voting
+├── components/
+│   └── game-card/      # Game list card component
+├── models/             # game.model.ts, player.model.ts, role.model.ts
+└── services/
+    ├── game.service.ts          # API calls (games, actions, messages)
+    └── classic-mafia.service.ts # Game logic (role assignment, resolve night/vote, win check)
+
+public/                 # Static assets (card images, transition videos)
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+---
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Development
 
 ```bash
-ng generate component component-name
+npm install
+npx ng serve       # dev server at localhost:4200
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+> Note: the app connects to the live API (`api.webart.work`). CORS is restricted to the production domain, so game actions won't work on localhost — use the deployed site for full testing.
+
+---
+
+## Build & Deploy
 
 ```bash
-ng generate --help
+npx ng build       # outputs to dist/role-nowadays/browser
+npx cap sync       # sync to Capacitor (mobile)
 ```
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Deploy is automatic via GitHub Actions on push to `master` → GitHub Pages.
