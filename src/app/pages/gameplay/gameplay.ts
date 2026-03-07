@@ -15,42 +15,31 @@ import { Game } from '../../models/game.model';
   template: `
     <!-- Role Reveal Overlay -->
     @if (showRoleReveal() && myRoleDef && myRole) {
-      @if (myRole === 'Doctor') {
-        <!-- Fullscreen video reveal for Doctor -->
-        <div class="fixed inset-0 z-50 bg-black transition-opacity duration-700"
-          [class]="roleRevealed() ? 'opacity-0 pointer-events-none' : 'opacity-100'">
-          <video #doctorRevealVideo
-            src="/doctor-reveal.mp4"
-            autoplay muted playsinline
-            (ended)="revealRole()"
-            class="w-full h-full object-contain">
-          </video>
-        </div>
-      } @else {
-        <!-- Standard card reveal for other roles -->
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0b17] px-6"
-          [class]="roleRevealed() ? 'pointer-events-none' : 'cursor-pointer'"
-          (click)="revealRole()">
-          <div class="w-full transition-all duration-[600ms] ease-in-out"
-            [class]="roleRevealed()
-              ? 'max-w-[280px] scale-[0.55] opacity-0'
-              : 'max-w-md scale-100 opacity-100'">
-            <div class="relative overflow-hidden rounded-3xl p-8 border-2 text-center"
-              [class]="revealCardBg(myRole)">
-              <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl opacity-25"
-                [class]="revealGlowColor(myRole)"></div>
-              <div class="text-8xl mb-6 relative">{{ revealRoleIcon(myRole) }}</div>
-              <h2 class="text-4xl font-black text-white mb-3 leading-tight relative">{{ myRole }}</h2>
-              <span class="inline-block text-xs px-3 py-1.5 rounded-full font-bold mb-4 border relative"
-                [class]="revealBadge(myRole)">
-                {{ teamLabel(myRoleDef.team) }}
-              </span>
-              <p class="text-sm text-white/60 leading-relaxed mb-8 relative">{{ myRoleDef.description }}</p>
-              <p class="text-xs text-white/30 animate-pulse relative">Торкніться щоб продовжити</p>
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black px-8"
+        [class]="roleRevealed() ? 'pointer-events-none' : 'cursor-pointer'"
+        (click)="revealRole()">
+        <div class="w-full transition-all duration-[600ms] ease-in-out"
+          [class]="roleRevealed()
+            ? 'max-w-[280px] scale-[0.55] opacity-0'
+            : 'max-w-sm scale-100 opacity-100'">
+          <div class="flip-card w-full">
+            <div class="flip-inner w-full rounded-2xl shadow-2xl shadow-black/80"
+              [class.flipped]="cardFlipped()">
+              <!-- Front: card back image -->
+              <img src="/card-back.jpg" alt="Card back"
+                class="flip-face w-full rounded-2xl block" />
+              <!-- Back: role image -->
+              <img [src]="roleCardImage(myRole!)" [alt]="myRole!"
+                class="flip-back-face w-full rounded-2xl block" />
             </div>
           </div>
+          @if (!cardFlipped()) {
+            <p class="text-center text-xs text-white/30 animate-pulse mt-4">Торкніться щоб дізнатись роль</p>
+          } @else if (!roleRevealed()) {
+            <p class="text-center text-xs text-white/30 animate-pulse mt-4">Торкніться щоб продовжити</p>
+          }
         </div>
-      }
+      </div>
     }
 
     <div class="min-h-screen bg-[#0b0b17]">
@@ -160,20 +149,9 @@ import { Game } from '../../models/game.model';
                   </div>
                 </div>
               } @else {
-                <div class="relative overflow-hidden rounded-2xl p-5 border" [class]="roleCardBg(myRoleDef.team)">
-                  <div class="absolute -top-8 -right-8 w-28 h-28 rounded-full blur-3xl opacity-20"
-                    [class]="myRoleDef.team === 'mafia' ? 'bg-red-500' : 'bg-blue-500'"></div>
-                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold mb-3" [class]="teamAccent(myRoleDef.team)">Ваша роль</p>
-                  <div class="flex items-start gap-4">
-                    <div class="text-4xl shrink-0 mt-0.5">{{ roleIcon(myRoleDef.team) }}</div>
-                    <div class="flex-1 min-w-0">
-                      <h2 class="text-2xl font-black text-white mb-1.5 leading-tight">{{ myRole }}</h2>
-                      <span class="inline-block text-[10px] px-2.5 py-1 rounded-full font-bold mb-2 border" [class]="teamBadge(myRoleDef.team)">
-                        {{ teamLabel(myRoleDef.team) }}
-                      </span>
-                      <p class="text-sm text-white/60 leading-relaxed">{{ myRoleDef.description }}</p>
-                    </div>
-                  </div>
+                <div class="relative overflow-hidden rounded-2xl border" [class]="roleCardBg(myRoleDef.team)">
+                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold px-5 pt-4 pb-3" [class]="teamAccent(myRoleDef.team)">Ваша роль</p>
+                  <img [src]="roleCardImage(myRole!)" [alt]="myRole!" class="w-full object-contain" />
                 </div>
               }
             }
@@ -506,6 +484,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   allMessages = signal<any[]>([]);
   showRoleReveal = signal(false);
   roleRevealed = signal(false);
+  cardFlipped = signal(false);
 
   myIndexVal = -1;
   dayChatText = '';
@@ -552,6 +531,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
             this.roleRevealShown = true;
             this.showRoleReveal.set(true);
             this.roleRevealed.set(false);
+            this.cardFlipped.set(false);
           }
         }
       });
@@ -720,6 +700,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
             this.roleRevealShown = true;
             this.showRoleReveal.set(true);
             this.roleRevealed.set(false);
+            this.cardFlipped.set(false);
           }
         }
         this.loading.set(false);
@@ -829,8 +810,15 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   revealRole() {
     if (this.roleRevealed()) return;
-    this.roleRevealed.set(true);
-    setTimeout(() => this.showRoleReveal.set(false), 600);
+    if (!this.cardFlipped()) {
+      this.cardFlipped.set(true);
+    } else {
+      this.roleRevealed.set(true);
+      setTimeout(() => {
+        this.showRoleReveal.set(false);
+        this.cardFlipped.set(false);
+      }, 600);
+    }
   }
 
   // ── Night action helpers ──────────────────────────────────────────────
@@ -924,6 +912,16 @@ export class GameplayComponent implements OnInit, OnDestroy {
       Mafia: 'bg-red-500', Doctor: 'bg-green-500', Detective: 'bg-blue-500', Villager: 'bg-slate-400',
     };
     return map[role] ?? 'bg-white';
+  }
+
+  roleCardImage(role: string): string {
+    const map: Record<string, string> = {
+      Mafia: '/card-mafia.jpg',
+      Doctor: '/card-doctor.jpg',
+      Detective: '/card-detective.jpg',
+      Villager: '/card-villager.jpg',
+    };
+    return map[role] ?? '';
   }
 
   revealBadge(role: string): string {
