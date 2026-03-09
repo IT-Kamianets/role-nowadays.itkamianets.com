@@ -92,7 +92,7 @@ export class ExtendedMafiaService {
         watcherTarget: null, watcherResult: null,
         consigliereTarget: null, consigliereResult: null,
         roleblockerTarget: null, poisonerTarget: null, framerTarget: null,
-        serialKillerTarget: null, arsonistTarget: null, arsonistIgnite: false,
+        serialKillerTarget: null, arsonistTarget: null, arsonistIgnite: false, priestTarget: null,
       },
       eliminated: null,
       winner: null,
@@ -113,17 +113,31 @@ export class ExtendedMafiaService {
     const night = d.night;
     const roles = d.roles;
 
-    // 1. Roleblocker: build blocked set
+    // 1. Roleblocker: build blocked set first (before priest, so we can check if priest is blocked)
     const blocked = new Set<number>();
     if (night.roleblockerTarget !== null && night.roleblockerTarget !== undefined) {
       blocked.add(night.roleblockerTarget);
     }
 
-    // 2. Framer
+    // 2. Priest: who is under sacred protection? (only effective if priest is not blocked)
+    const priestIdx = d.alive.find(i => roles[String(i)] === 'Priest');
+    const priestNotBlocked = priestIdx !== undefined && !blocked.has(priestIdx);
+    const priestProtected: number | null =
+      (priestNotBlocked && night.priestTarget !== null && night.priestTarget !== undefined)
+        ? night.priestTarget
+        : null;
+
+    // Priest nullifies roleblocker on the protected player
+    if (priestProtected !== null) {
+      blocked.delete(priestProtected);
+    }
+
+    // 3. Framer (Priest nullifies framing on the protected player)
     const framerIdx = d.alive.find(i => roles[String(i)] === 'Framer');
     const framedPlayers = new Set<number>();
     if (framerIdx !== undefined && !blocked.has(framerIdx) &&
-        night.framerTarget !== null && night.framerTarget !== undefined) {
+        night.framerTarget !== null && night.framerTarget !== undefined &&
+        night.framerTarget !== priestProtected) {
       framedPlayers.add(night.framerTarget);
     }
 
@@ -158,9 +172,8 @@ export class ExtendedMafiaService {
       const tRole = roles[String(night.sheriffTarget)];
       if (framedPlayers.has(night.sheriffTarget)) {
         d.night.sheriffResult = 'mafia';
-      } else if (tRole === 'Godfather') {
-        d.night.sheriffResult = 'city';
       } else {
+        // Sheriff sees through Godfather — Godfather appears as mafia
         d.night.sheriffResult = this.ROLE_DEFS[tRole]?.team === 'mafia' ? 'mafia' : 'city';
       }
     }
@@ -194,7 +207,7 @@ export class ExtendedMafiaService {
       const visitors: number[] = [];
       if (night.mafiaTarget === wt) {
         const mv = d.alive.find(i => roles[String(i)] === 'Mafia' || roles[String(i)] === 'Godfather');
-        if (mv !== undefined) visitors.push(mv);
+        if (mv !== undefined && !isBlocked(mv)) visitors.push(mv);
       }
       if (!isBlocked(doctorIdx) && night.doctorTarget === wt && doctorIdx !== undefined) visitors.push(doctorIdx);
       if (!isBlocked(detectiveIdx) && night.detectiveTarget === wt && detectiveIdx !== undefined) visitors.push(detectiveIdx);
@@ -219,7 +232,8 @@ export class ExtendedMafiaService {
     // 9. Arsonist douse (ignite handled in kills below)
     if (!d.arsonistDoused) d.arsonistDoused = [];
     if (!isBlocked(arsonistIdx) && !night.arsonistIgnite &&
-        night.arsonistTarget !== null && night.arsonistTarget !== undefined) {
+        night.arsonistTarget !== null && night.arsonistTarget !== undefined &&
+        night.arsonistTarget !== arsonistIdx) {
       if (!d.arsonistDoused.includes(night.arsonistTarget)) {
         d.arsonistDoused.push(night.arsonistTarget);
       }
@@ -246,7 +260,7 @@ export class ExtendedMafiaService {
     // Serial Killer kill
     if (!isBlocked(skIdx) && night.serialKillerTarget !== null && night.serialKillerTarget !== undefined) {
       const skTarget = night.serialKillerTarget;
-      if (!killed.includes(skTarget)) {
+      if (skTarget !== skIdx && !killed.includes(skTarget)) {
         const doctorSaved = !isBlocked(doctorIdx) && night.doctorTarget === skTarget;
         if (doctorSaved) {
           d.log.push(`Раунд ${d.round}: Лікар врятував гравця ${skTarget + 1} від серійного вбивці.`);
@@ -302,8 +316,13 @@ export class ExtendedMafiaService {
     const cityCount    = aliveRoles.filter(r => this.ROLE_DEFS[r]?.team === 'city').length;
     const skCount      = aliveRoles.filter(r => r === 'SerialKiller').length;
     const neutralCount = aliveRoles.filter(r => this.ROLE_DEFS[r]?.team === 'neutral' && r !== 'SerialKiller').length;
-    if (mafiaCount === 0 && skCount === 0) return 'village';
+    const survivorAlive = aliveRoles.some(r => r === 'Survivor');
+
+    // Village (+ Survivor) wins when all mafia and SK are eliminated
+    if (mafiaCount === 0 && skCount === 0) return survivorAlive ? 'survivor' : 'village';
+    // SK wins when only SK remain (no mafia, no city, no other neutrals)
     if (skCount > 0 && mafiaCount === 0 && cityCount === 0 && neutralCount === 0) return 'serialkiller';
+    // Mafia wins when they outnumber or equal everyone else
     if (mafiaCount >= cityCount + skCount + neutralCount) return 'mafia';
     return null;
   }
@@ -340,7 +359,7 @@ export class ExtendedMafiaService {
       watcherTarget: null, watcherResult: null,
       consigliereTarget: null, consigliereResult: null,
       roleblockerTarget: null, poisonerTarget: null, framerTarget: null,
-      serialKillerTarget: null, arsonistTarget: null, arsonistIgnite: false,
+      serialKillerTarget: null, arsonistTarget: null, arsonistIgnite: false, priestTarget: null,
     };
     return d;
   }

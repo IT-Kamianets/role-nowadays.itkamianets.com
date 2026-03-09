@@ -26,6 +26,7 @@ export interface MafiaGameData {
     serialKillerTarget?: number | null;
     arsonistTarget?: number | null;
     arsonistIgnite?: boolean | number;
+    priestTarget?: number | null;
   };
   eliminated: number | null;
   winner: 'village' | 'mafia' | 'jester' | 'executioner' | 'serialkiller' | 'survivor' | null;

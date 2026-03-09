@@ -65,7 +65,7 @@ type ModeFilter = string | null;
         </div>
 
         <!-- Game List -->
-        <main class="px-5 space-y-4 pb-12">
+        <main class="px-5 space-y-4 pb-6">
           @if (filteredGames().length === 0) {
             <div class="text-center text-amber-100/20 py-20 text-sm">Ігор не знайдено</div>
           }
@@ -73,6 +73,20 @@ type ModeFilter = string | null;
             <app-game-card [game]="game" (join)="joinGame($event)" />
           }
         </main>
+
+        <footer class="px-5 py-6 border-t border-[#2d1f10] text-center space-y-1">
+          <p class="text-[10px] text-amber-100/20 leading-relaxed">
+            Developed by
+            <span class="text-amber-100/40 font-semibold">Danylchuk Andriy</span>
+            <span class="text-amber-100/15 mx-1">·</span>
+            Frontend
+          </p>
+          <p class="text-[10px] text-amber-100/20 leading-relaxed">
+            <span class="text-amber-100/40 font-semibold">Honchar Denys</span>
+            <span class="text-amber-100/15 mx-1">·</span>
+            Backend
+          </p>
+        </footer>
 
       </div>
     </div>

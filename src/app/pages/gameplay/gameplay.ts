@@ -19,7 +19,8 @@ import { Game } from '../../models/game.model';
       <div class="fixed inset-0 z-50 bg-black">
         <video [src]="transitionVideo()!" autoplay muted playsinline
           class="w-full h-full object-cover"
-          (ended)="onTransitionEnd()">
+          (ended)="onTransitionEnd()"
+          (error)="onTransitionEnd()">
         </video>
       </div>
     }
@@ -28,10 +29,8 @@ import { Game } from '../../models/game.model';
     @if (showRoleReveal() && myRoleDef && myRole) {
       <div class="fixed inset-0 z-50 flex items-center justify-center bg-black px-8"
         [class]="roleRevealed() ? 'pointer-events-none' : ''">
-        <div class="w-full transition-all duration-[600ms] ease-in-out"
-          [class]="roleRevealed()
-            ? 'max-w-[280px] scale-[0.55] opacity-0'
-            : 'max-w-sm scale-100 opacity-100'">
+        <div class="w-full max-w-sm"
+          [class.card-fly-right]="roleRevealed()">
           <div class="flip-card w-full">
             <div class="flip-inner w-full rounded-2xl shadow-2xl shadow-black/80"
               [class.flipped]="cardFlipped()">
@@ -218,7 +217,7 @@ import { Game } from '../../models/game.model';
               <div>
                 <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">{{ roleNightActionLabel }}</p>
                 <div class="space-y-2">
-                  @for (p of nightTargets; track p.index) {
+                  @for (p of currentNightTargets; track p.index) {
                     <button (click)="submitNightAction(p.index)"
                       class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors text-left"
                       [class]="myNightTarget === p.index ? 'border-amber-600/60 bg-amber-900/20' : 'bg-[#1a110a] border-[#2d1f10] hover:bg-amber-900/10'">
@@ -612,6 +611,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   private gameId = '';
   private roleRevealShown = false;
+  private revealAfterTransition = false;
   private pollSub?: Subscription;
   private msgPollSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
@@ -652,10 +652,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
           const round = (game.data as Partial<MafiaGameData>)?.round;
           if (round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
             this.roleRevealShown = true;
-            this.showRoleReveal.set(true);
-            this.roleRevealed.set(false);
-            this.cardFlipped.set(false);
-            this.startAutoReveal();
+            this.revealAfterTransition = true;
+            this.transitionVideo.set('/day-to-night.mp4');
           }
         }
         const isActivePhase = ['night', 'day', 'voting'].includes(newPhase ?? '');
@@ -690,6 +688,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       const d = this.gameData;
+      const revealActive = this.showRoleReveal();
 
       if (d?.phase === 'day' && d.phaseStartedAt) {
         const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
@@ -705,12 +704,17 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       if (d?.phase === 'night' && d.phaseStartedAt) {
-        const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-        const left = Math.max(0, (d.settings?.nightDuration ?? 30) - elapsed);
-        this.nightSecondsLeft.set(left);
-        if (left === 0 && !this.nightTransitionSent) {
-          this.nightTransitionSent = true;
-          this.triggerNightToDay();
+        if (revealActive) {
+          // Freeze the timer display at full duration while role reveal animation plays
+          this.nightSecondsLeft.set(d.settings?.nightDuration ?? 30);
+        } else {
+          const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
+          const left = Math.max(0, (d.settings?.nightDuration ?? 30) - elapsed);
+          this.nightSecondsLeft.set(left);
+          if (left === 0 && !this.nightTransitionSent) {
+            this.nightTransitionSent = true;
+            this.triggerNightToDay();
+          }
         }
       } else {
         this.nightSecondsLeft.set(d?.settings?.nightDuration ?? 30);
@@ -860,10 +864,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
           const round = (game.data as Partial<MafiaGameData>)?.round;
           if (newPhase === 'night' && round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
             this.roleRevealShown = true;
-            this.showRoleReveal.set(true);
-            this.roleRevealed.set(false);
-            this.cardFlipped.set(false);
-            this.startAutoReveal();
+            this.revealAfterTransition = true;
+            this.transitionVideo.set('/day-to-night.mp4');
           }
         }
         this.loading.set(false);
@@ -887,7 +889,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       Tracker: 'trackerTarget', Watcher: 'watcherTarget',
       Consigliere: 'consigliereTarget', Roleblocker: 'roleblockerTarget',
       Poisoner: 'poisonerTarget', Framer: 'framerTarget',
-      SerialKiller: 'serialKillerTarget', Arsonist: 'arsonistTarget',
+      SerialKiller: 'serialKillerTarget', Arsonist: 'arsonistTarget', Priest: 'priestTarget',
     };
     const field = roleToField[role];
     if (!field) return;
@@ -940,8 +942,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const d = this.gameData;
     if (!d || d.phase !== 'voting') { this.votingTransitionSent = false; return; }
     const tally: Record<number, number> = {};
-    for (const target of Object.values(d.votes ?? {})) {
-      tally[target] = (tally[target] ?? 0) + 1;
+    for (const [voter, target] of Object.entries(d.votes ?? {})) {
+      const weight = d.roles[voter] === 'Mayor' ? 2 : 1;
+      tally[target] = (tally[target] ?? 0) + weight;
     }
     const aliveSet = new Set(d.alive);
     let maxVotes = 0, eliminated = d.alive[0];
@@ -1000,6 +1003,14 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   onTransitionEnd() {
     this.transitionVideo.set(null);
+    if (this.revealAfterTransition) {
+      this.revealAfterTransition = false;
+      this.showRoleReveal.set(true);
+      this.roleRevealed.set(false);
+      this.cardFlipped.set(false);
+      this.startAutoReveal();
+      return;
+    }
     this.phaseAnimKey.update(k => k + 1);
   }
 
@@ -1008,10 +1019,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
       this.cardFlipped.set(true);
       this.revealTimeout2 = setTimeout(() => {
         this.roleRevealed.set(true);
+        this.splitLayoutVisible.set(true);
         this.revealTimeout3 = setTimeout(() => {
           this.showRoleReveal.set(false);
           this.cardFlipped.set(false);
-          this.splitLayoutVisible.set(true);
         }, 600);
       }, 650 + 2000);
     }, 600);
@@ -1020,14 +1031,14 @@ export class GameplayComponent implements OnInit, OnDestroy {
   // ── Night action helpers ──────────────────────────────────────────────
 
   isSleepingRole(role: string | null): boolean {
-    const sleepers = ['Villager', 'Priest', 'Mayor', 'Survivor', 'Jester', 'Executioner'];
+    const sleepers = ['Villager', 'Mayor', 'Survivor', 'Jester', 'Executioner'];
     return !!role && sleepers.includes(role);
   }
 
   hasNightAction(role: string | null): boolean {
     const actors = ['Mafia', 'Godfather', 'Doctor', 'Detective', 'Bodyguard', 'Sheriff',
       'Tracker', 'Watcher', 'Consigliere', 'Roleblocker', 'Poisoner', 'Framer',
-      'SerialKiller', 'Arsonist'];
+      'SerialKiller', 'Arsonist', 'Priest'];
     return !!role && actors.includes(role);
   }
 
@@ -1055,6 +1066,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       case 'Framer':       return n.framerTarget !== null && n.framerTarget !== undefined;
       case 'SerialKiller': return n.serialKillerTarget !== null && n.serialKillerTarget !== undefined;
       case 'Arsonist':     return (n.arsonistTarget !== null && n.arsonistTarget !== undefined) || !!n.arsonistIgnite;
+      case 'Priest':       return n.priestTarget !== null && n.priestTarget !== undefined;
       default: return true;
     }
   }
@@ -1079,6 +1091,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       case 'Framer':       return n.framerTarget ?? null;
       case 'SerialKiller': return n.serialKillerTarget ?? null;
       case 'Arsonist':     return n.arsonistTarget ?? null;
+      case 'Priest':       return n.priestTarget ?? null;
       default: return null;
     }
   }
@@ -1098,12 +1111,27 @@ export class GameplayComponent implements OnInit, OnDestroy {
       Poisoner:    '☠️ Оберіть кого отруїти',
       Framer:      '🖼️ Оберіть кого підставити',
       SerialKiller:'🗡️ Оберіть жертву',
+      Priest:      '✝️ Оберіть кого освятити цієї ночі',
     };
     return map[this.myRole ?? ''] ?? '';
   }
 
   get nightTargets() {
-    return this.alivePlayers.filter(p => p.index !== this.myIndexVal);
+    const d = this.gameData;
+    const mafiaTeam = new Set(['Mafia', 'Godfather', 'Consigliere', 'Roleblocker', 'Poisoner', 'Framer']);
+    const isMafiaRole = this.myRole ? mafiaTeam.has(this.myRole) : false;
+    return this.alivePlayers.filter(p => {
+      if (p.index === this.myIndexVal) return false;
+      // Mafia members cannot target own team
+      if (isMafiaRole && d && mafiaTeam.has(d.roles?.[String(p.index)] ?? '')) return false;
+      return true;
+    });
+  }
+
+  // Doctor and Priest can target themselves
+  get currentNightTargets() {
+    const canSelf = this.myRole === 'Doctor' || this.myRole === 'Priest';
+    return canSelf ? this.alivePlayers : this.nightTargets;
   }
 
   get isCreator(): boolean {
@@ -1193,10 +1221,26 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   roleCardImage(role: string): string {
     const map: Record<string, string> = {
-      Mafia: '/card-mafia.jpg',
-      Doctor: '/card-doctor.jpg',
-      Detective: '/card-detective.jpg',
-      Villager: '/card-villager.jpg',
+      Villager:    '/card-villager.jpg',
+      Detective:   '/card-detective.jpg',
+      Doctor:      '/card-doctor.jpg',
+      Bodyguard:   '/card-bodyguard.jpg',
+      Sheriff:     '/card-sheriff.jpg',
+      Tracker:     '/card-tracker.jpg',
+      Watcher:     '/card-watcher.jpg',
+      Priest:      '/card-priest.jpg',
+      Mayor:       '/card-mayor.jpg',
+      Mafia:       '/card-mafia.jpg',
+      Godfather:   '/card-godfather.jpg',
+      Consigliere: '/card-consigliere.jpg',
+      Roleblocker: '/card-roleblocker.jpg',
+      Poisoner:    '/card-poisoner.jpg',
+      Framer:      '/card-framer.jpg',
+      Jester:      '/card-jester.jpg',
+      Executioner: '/card-executioner.jpg',
+      Survivor:    '/card-survivor.jpg',
+      SerialKiller: '/card-serialkiller.jpg',
+      Arsonist:    '/card-arsonist.jpg',
     };
     return map[role] ?? '/card-back.jpg';
   }

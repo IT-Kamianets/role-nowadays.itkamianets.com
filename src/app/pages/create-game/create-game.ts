@@ -255,7 +255,7 @@ export class CreateGameComponent {
   nightDuration = signal(30);
   votingDuration = signal(30);
   loading = signal(false);
-  customRoles = signal<Record<string, number>>({ Mafia: 1, Villager: 2 });
+  customRoles = signal<Record<string, number>>({ Mafia: 2, Detective: 1, Doctor: 1, Villager: 4 });
 
   customRolesTotal = computed(() => Object.values(this.customRoles()).reduce((a, b) => a + b, 0));
 
@@ -263,7 +263,7 @@ export class CreateGameComponent {
     if (this.selectedMode() !== 'Custom') return null;
     const total = this.customRolesTotal();
     const limit = this.playerLimit();
-    if (total > limit) return `Кількість ролей (${total}) перевищує ліміт гравців (${limit})`;
+    if (total !== limit) return `Кількість ролей (${total}) має дорівнювати ліміту гравців (${limit})`;
     const mafiaCount = (this.customRoles()['Mafia'] ?? 0) + (this.customRoles()['Godfather'] ?? 0);
     if (mafiaCount < 1) return 'Потрібна хоча б 1 роль мафії (Mafia або Godfather)';
     return null;
