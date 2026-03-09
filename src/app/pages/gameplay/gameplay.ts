@@ -17,10 +17,11 @@ import { Game } from '../../models/game.model';
     <!-- Phase Transition Video Overlay -->
     @if (transitionVideo()) {
       <div class="fixed inset-0 z-50 bg-black">
-        <video [src]="transitionVideo()!" autoplay muted playsinline
+        <video [src]="transitionVideo()!" autoplay muted playsinline preload="auto"
           class="w-full h-full object-cover"
           (ended)="onTransitionEnd()"
-          (error)="onTransitionEnd()">
+          (error)="onTransitionEnd()"
+          (stalled)="onVideoStalled()">
         </video>
       </div>
     }
@@ -618,6 +619,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   private revealTimeout1?: ReturnType<typeof setTimeout>;
   private revealTimeout2?: ReturnType<typeof setTimeout>;
   private revealTimeout3?: ReturnType<typeof setTimeout>;
+  private videoFallbackTimeout?: ReturnType<typeof setTimeout>;
   private dayTransitionSent = false;
   private nightTransitionSent = false;
   private votingTransitionSent = false;
@@ -653,7 +655,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
           if (round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
             this.roleRevealShown = true;
             this.revealAfterTransition = true;
-            this.transitionVideo.set('/day-to-night.mp4');
+            this.playTransitionVideo('/day-to-night.mp4');
           }
         }
         const isActivePhase = ['night', 'day', 'voting'].includes(newPhase ?? '');
@@ -662,9 +664,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
         }
         if (prevPhase && prevPhase !== newPhase && isActivePhase && this.splitLayoutVisible()) {
           if (prevPhase === 'night' && newPhase === 'day') {
-            this.transitionVideo.set('/night-to-day.mp4');
+            this.playTransitionVideo('/night-to-day.mp4');
           } else if ((prevPhase === 'day' || prevPhase === 'voting') && newPhase === 'night') {
-            this.transitionVideo.set('/day-to-night.mp4');
+            this.playTransitionVideo('/day-to-night.mp4');
           } else {
             this.phaseAnimKey.update(k => k + 1);
           }
@@ -743,6 +745,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     clearTimeout(this.revealTimeout1);
     clearTimeout(this.revealTimeout2);
     clearTimeout(this.revealTimeout3);
+    clearTimeout(this.videoFallbackTimeout);
   }
 
   // ── Derived state ────────────────────────────────────────────────────
@@ -865,7 +868,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
           if (newPhase === 'night' && round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
             this.roleRevealShown = true;
             this.revealAfterTransition = true;
-            this.transitionVideo.set('/day-to-night.mp4');
+            this.playTransitionVideo('/day-to-night.mp4');
           }
         }
         this.loading.set(false);
@@ -1002,6 +1005,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   onTransitionEnd() {
+    if (!this.transitionVideo()) return; // already handled
+    clearTimeout(this.videoFallbackTimeout);
     this.transitionVideo.set(null);
     if (this.revealAfterTransition) {
       this.revealAfterTransition = false;
@@ -1012,6 +1017,19 @@ export class GameplayComponent implements OnInit, OnDestroy {
       return;
     }
     this.phaseAnimKey.update(k => k + 1);
+  }
+
+  onVideoStalled() {
+    // Video buffering or suspended — skip after short delay instead of waiting forever
+    clearTimeout(this.videoFallbackTimeout);
+    this.videoFallbackTimeout = setTimeout(() => this.onTransitionEnd(), 2_000);
+  }
+
+  private playTransitionVideo(src: string) {
+    clearTimeout(this.videoFallbackTimeout);
+    this.transitionVideo.set(src);
+    // Fallback: if ended/error/stalled events all fail — force continue after 12s (video is 8s)
+    this.videoFallbackTimeout = setTimeout(() => this.onTransitionEnd(), 12_000);
   }
 
   private startAutoReveal() {
