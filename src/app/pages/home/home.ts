@@ -74,18 +74,24 @@ type ModeFilter = string | null;
           }
         </main>
 
-        <footer class="px-5 py-6 border-t border-[#2d1f10] text-center space-y-1">
-          <p class="text-[10px] text-amber-100/20 leading-relaxed">
-            Developed by
-            <span class="text-amber-100/40 font-semibold">Danylchuk Andriy</span>
-            <span class="text-amber-100/15 mx-1">·</span>
-            Frontend
-          </p>
-          <p class="text-[10px] text-amber-100/20 leading-relaxed">
-            <span class="text-amber-100/40 font-semibold">Honchar Denys</span>
-            <span class="text-amber-100/15 mx-1">·</span>
-            Backend
-          </p>
+        <footer class="px-5 py-6 border-t border-[#2d1f10] text-center space-y-3">
+          <button (click)="goFaq()"
+            class="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-100/35 hover:text-amber-100/60 transition-colors uppercase tracking-wider">
+            <span>❓</span> Часті запитання
+          </button>
+          <div class="space-y-1">
+            <p class="text-[10px] text-amber-100/20 leading-relaxed">
+              Developed by
+              <span class="text-amber-100/40 font-semibold">Danylchuk Andriy</span>
+              <span class="text-amber-100/15 mx-1">·</span>
+              Frontend
+            </p>
+            <p class="text-[10px] text-amber-100/20 leading-relaxed">
+              <span class="text-amber-100/40 font-semibold">Honchar Denys</span>
+              <span class="text-amber-100/15 mx-1">·</span>
+              Backend
+            </p>
+          </div>
         </footer>
 
       </div>
@@ -213,4 +219,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       if (result !== false) this.router.navigate(['/gameplay', game._id]);
     });
   }
+
+  goFaq() { this.router.navigate(['/faq']); }
 }

@@ -1,237 +1,237 @@
 # Role Nowadays
 
-> Browser-based social deduction game inspired by classic Mafia — cinematic role reveals, real-time multiplayer, 20 unique roles, zero install.
+> Браузерна соціальна гра-дедукція на основі класичної Мафії — кінематографічне розкриття ролей, мультиплеєр у реальному часі, 20 унікальних ролей, без встановлення.
 
-**Live:** [role-nowadays.itkamianets.com](https://role-nowadays.itkamianets.com)
-
----
-
-## What is this?
-
-Role Nowadays is a mobile-first Mafia game built for the web. Open a link, create a private room, share the PIN — and you're playing in seconds. No app store, no accounts, no waiting.
-
-The server owns all game state. Roles are assigned secretly on the backend, night actions are resolved automatically, and phase transitions are broadcast to every device simultaneously. Players can't cheat — every action is validated server-side before it takes effect.
+**Живий сайт:** [role-nowadays.itkamianets.com](https://role-nowadays.itkamianets.com)
 
 ---
 
-## Cinematic Experience
+## Що це таке?
 
-The game opens with a **mandatory video sequence** that cannot be skipped:
+Role Nowadays — це мобільна Мафія для браузера. Відкрий посилання, створи приватну кімнату, поділись PIN-кодом — і граєш за секунди. Без App Store, без акаунтів, без очікування.
 
-1. `day-to-night.mp4` plays fullscreen when the first night begins
-2. After the video: your role card appears face-down in the center of the screen
-3. The card flips to reveal your role — animated, unskippable
-4. The card flies to the right column as the split-screen layout slides in simultaneously
-5. Phase transitions (Night → Day → Night) trigger the corresponding video every round
-
-All animations are CSS keyframe-based and work on iOS Safari and Android Chrome with `muted playsinline` autoplay.
+Весь стан гри зберігається на сервері. Ролі призначаються таємно на бекенді, нічні дії вирішуються автоматично, а переходи між фазами транслюються на всі пристрої одночасно. Читати — неможливо, кожна дія перевіряється на сервері перед тим як набрати чинності.
 
 ---
 
-## Gameplay Loop
+## Кінематографічний досвід
+
+Гра відкривається **обов'язковою відео-послідовністю**, яку неможливо пропустити:
+
+1. `day-to-night.mp4` грає на весь екран коли починається перша ніч
+2. Після відео: карточка ролі з'являється рубашкою вниз по центру екрану
+3. Карточка перевертається і відкриває твою роль — анімація обов'язкова
+4. Карточка летить у праву колонку, одночасно з'являється розділений екран
+5. Переходи фаз (Ніч → День → Ніч) щоразу запускають відповідне відео
+
+Всі анімації реалізовані на CSS keyframes і працюють на iOS Safari та Android Chrome через `muted playsinline` autoplay.
+
+---
+
+## Ігровий цикл
 
 ```
-Lobby → Night 1 (video + role reveal) → Day → Voting → Night 2 → ... → End
+Лобі → Ніч 1 (відео + розкриття ролі) → День → Голосування → Ніч 2 → ... → Кінець
 ```
 
-**Night** — each role performs their secret action:
-- Mafia votes on a kill target
-- Doctor picks someone to protect
-- Detective checks a player's alignment
-- Mafia team has a private chat visible only to them
+**Ніч** — кожна роль виконує свою таємну дію:
+- Мафія голосує за ціль для вбивства
+- Лікар обирає кого захистити
+- Детектив перевіряє приналежність гравця
+- Команда мафії має приватний чат, видимий лише для них
 
-**Day** — all players discuss publicly. A live chat is available to everyone.
+**День** — всі гравці публічно обговорюють. Чат доступний кожному.
 
-**Voting** — players vote to eliminate a suspect. The highest vote count wins. In case of a tie, no one is eliminated. Mayor's vote counts double.
+**Голосування** — гравці голосують за виключення підозрюваного. Перемагає той, хто набрав найбільше голосів. При рівності — ніхто не вибуває. Голос мера рахується вдвічі.
 
-**End** — the game ends when one faction achieves its win condition. All roles are revealed.
-
----
-
-## Win Conditions
-
-| Faction | Wins when... |
-|---------|-------------|
-| City | All mafia members are eliminated |
-| Mafia | Mafia count equals or exceeds city count |
-| Jester | Gets eliminated by city vote |
-| Executioner | Secret target is eliminated by city vote |
-| Survivor | Alive at the end of the game |
-| Serial Killer | Last one standing |
-| Arsonist | Ignites enough doused players to win solo |
+**Кінець** — гра завершується коли одна з фракцій досягає умови перемоги. Всі ролі розкриваються.
 
 ---
 
-## Roles
+## Умови перемоги
 
-### City
-
-| Role | Ability |
-|------|---------|
-| Villager | No special ability. Trust your reads. |
-| Detective | Investigates one player per night — learns if they're mafia or not |
-| Doctor | Protects one player per night from elimination |
-| Bodyguard | Guards a player — dies in their place if attacked |
-| Sheriff | Investigates one player — learns mafia vs. city |
-| Tracker | Follows a target and sees who they visited |
-| Watcher | Guards a target and sees everyone who visited them |
-| Priest | Shields a player from manipulation and role-blocking |
-| Mayor | Vote counts twice during elimination |
-
-### Mafia
-
-| Role | Ability |
-|------|---------|
-| Mafia | Votes with the team to eliminate a player each night |
-| Godfather | Leads the mafia. Appears innocent to Detective and Sheriff |
-| Consigliere | Learns the exact role of any player each night |
-| Roleblocker | Prevents a player from using their night action |
-| Poisoner | Poisons a target — they die two rounds later |
-| Framer | Makes a player appear as mafia to investigators |
-
-### Neutral
-
-| Role | Ability |
-|------|---------|
-| Jester | Win by tricking the city into voting you out |
-| Executioner | Has a secret target — win if they're voted out |
-| Survivor | No ability. Just stay alive. |
-| Serial Killer | Kills one player per night independently |
-| Arsonist | Douses players with gasoline, then ignites them all at once |
-
----
-
-## Game Modes
-
-### Classic
-A balanced setup for 4–10 players. Roles: Villager, Detective, Doctor, Mafia. No complex interactions — pure deduction.
-
-### Extended
-Scales dynamically from 4 to 15+ players. Role composition changes by player count:
-
-| Players | Notable additions |
+| Фракція | Перемагає коли... |
 |---------|-------------------|
-| 4–5 | Mafia, Detective, Doctor |
-| 6–7 | + Godfather, Bodyguard |
-| 8–9 | + Second Mafia, Jester |
-| 10–11 | + Consigliere, Sheriff, Survivor |
-| 12+ | + Third Mafia, Roleblocker, Tracker |
-
-### Custom
-The host manually picks how many of each role to include. Any combination is valid — the game engine handles edge cases automatically.
-
----
-
-## Features
-
-- **Zero install** — runs in any modern mobile browser
-- **Private rooms** with PIN codes
-- **Real-time sync** via 3-second polling (no WebSocket dependency)
-- **Cinematic phase transitions** — fullscreen video between night and day
-- **Role reveal animation** — card flip sequence on game start, unskippable
-- **Split-screen header** — current phase + timer + your role card, always visible
-- **Mafia team chat** — private night chat visible only to mafia members
-- **Role-specific night actions** — each role has a unique UI and target list
-- **Vote tracking** — live progress: see who has voted and who hasn't
-- **Auto phase transitions** — timers automatically advance to the next phase
-- **Mayor double-vote** — vote weight system built into tallying
-- **Arsonist ignite mechanic** — accumulate doused players, then choose when to ignite
-- **Executioner secret target** — assigned at game start, checked every vote resolution
-- **Poisoner delayed kill** — poison resolves after 2 rounds automatically
-- **Event log** — full game history visible during and after the game
-- **Win screen** — shows winner, all roles, and full game log
-- **Capacitor-ready** — wrappable as a native Android/iOS app
+| Місто | Всіх членів мафії усунено |
+| Мафія | Кількість мафії дорівнює або перевищує кількість міста |
+| Блазень | Виключений голосуванням міста |
+| Кат | Секретну ціль усунено голосуванням міста |
+| Виживший | Залишився живим до кінця гри |
+| Серійний вбивця | Останній живий |
+| Підпалювач | Підпалює достатньо облитих гравців і перемагає самостійно |
 
 ---
 
-## Tech Stack
+## Ролі
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Angular 21 (standalone components, lazy-loaded routes) |
-| Styling | Tailwind CSS v3 |
-| Animations | CSS keyframes (`@keyframes cardFlyRight`, `phaseSlideIn`, `roleCardAppear`) |
-| Mobile wrapper | Capacitor (`com.itkamianets.rolenow`) |
-| Backend | REST API at `api.webart.work` |
-| Realtime | Polling every 3 seconds via RxJS `interval + switchMap` |
-| CI/CD | GitHub Actions → `gh-pages` branch |
-| Hosting | GitHub Pages + custom domain via CNAME |
+### Місто
+
+| Роль | Здібність |
+|------|-----------|
+| Містянин | Немає спеціальних здібностей. Довіряй своєму читанню. |
+| Детектив | Вночі перевіряє одного гравця — мафія чи ні |
+| Лікар | Вночі захищає одного гравця від усунення |
+| Охоронець | Охороняє гравця — гине замість нього при атаці |
+| Шериф | Перевіряє гравця — мафія чи місто |
+| Слідчий | Відстежує ціль і бачить кого та відвідала вночі |
+| Спостерігач | Стежить за ціллю і бачить всіх, хто її відвідав |
+| Священик | Захищає гравця від маніпуляцій та блокування |
+| Мер | Голос рахується вдвічі при голосуванні |
+
+### Мафія
+
+| Роль | Здібність |
+|------|-----------|
+| Мафія | Голосує з командою за усунення гравця щоночі |
+| Хрещений батько | Очолює мафію. Виглядає невинним для детектива та шерифа |
+| Консільєре | Вночі дізнається точну роль будь-якого гравця |
+| Блокувальник ролей | Блокує нічну дію обраного гравця |
+| Отруйник | Отруює гравця — той помирає через 2 раунди |
+| Провокатор | Підставляє гравця — перевірники бачать його як мафію |
+
+### Нейтральні
+
+| Роль | Здібність |
+|------|-----------|
+| Блазень | Перемагає якщо місто проголосує за його виключення |
+| Кат | Має секретну ціль — перемагає якщо ту виключать голосуванням |
+| Виживший | Немає здібностей. Просто залишайся живим. |
+| Серійний вбивець | Вночі вбиває одного гравця самостійно |
+| Підпалювач | Спочатку обливає гравців бензином, потім підпалює всіх одразу |
 
 ---
 
-## Project Structure
+## Режими гри
+
+### Класик
+Збалансований набір для 4–10 гравців. Ролі: Містянин, Детектив, Лікар, Мафія. Без складних взаємодій — чиста дедукція.
+
+### Розширений
+Масштабується від 4 до 15+ гравців. Склад ролей змінюється залежно від кількості гравців:
+
+| Гравці | Додані ролі |
+|--------|-------------|
+| 4–5 | Мафія, Детектив, Лікар |
+| 6–7 | + Хрещений батько, Охоронець |
+| 8–9 | + Другий гравець Мафії, Блазень |
+| 10–11 | + Консільєре, Шериф, Виживший |
+| 12+ | + Третій гравець Мафії, Блокувальник, Слідчий |
+
+### Власний
+Хост вручну обирає кількість кожної ролі. Будь-яка комбінація допустима — ігровий рушій автоматично обробляє граничні випадки.
+
+---
+
+## Можливості
+
+- **Без встановлення** — працює в будь-якому сучасному мобільному браузері
+- **Приватні кімнати** з PIN-кодами
+- **Синхронізація в реальному часі** через опитування кожні 3 секунди (без WebSocket)
+- **Кінематографічні переходи фаз** — повноекранне відео між ніччю та днем
+- **Анімація розкриття ролі** — перевертання карточки на старті, неминуче
+- **Розділений екран** — поточна фаза + таймер + карточка ролі, завжди видима
+- **Чат мафії** — приватний нічний чат, видимий лише членам мафії
+- **Унікальні нічні дії** — кожна роль має свій інтерфейс і список цілей
+- **Відстеження голосів** — в реальному часі: хто проголосував, а хто ще ні
+- **Автоматичні переходи фаз** — таймери самостійно просувають гру вперед
+- **Подвійний голос мера** — система ваги голосів вбудована у підрахунок
+- **Механіка підпалу** — накопичуй облитих гравців, обирай момент підпалу
+- **Секретна ціль ката** — призначається на початку гри, перевіряється при кожному голосуванні
+- **Відкладене вбивство отруйника** — отрута спрацьовує через 2 раунди автоматично
+- **Журнал подій** — повна історія гри доступна під час і після гри
+- **Екран перемоги** — показує переможця, всі ролі та повний журнал
+- **Підтримка Capacitor** — можна загорнути як нативний Android/iOS застосунок
+
+---
+
+## Технічний стек
+
+| Шар | Технологія |
+|-----|-----------|
+| Фреймворк | Angular 21 (standalone компоненти, lazy-loaded маршрути) |
+| Стилізація | Tailwind CSS v3 |
+| Анімації | CSS keyframes (`@keyframes cardFlyRight`, `phaseSlideIn`, `roleCardAppear`) |
+| Мобільна обгортка | Capacitor (`com.itkamianets.rolenow`) |
+| Бекенд | REST API на `api.webart.work` |
+| Реальний час | Опитування кожні 3 секунди через RxJS `interval + switchMap` |
+| CI/CD | GitHub Actions → гілка `gh-pages` |
+| Хостинг | GitHub Pages + власний домен через CNAME |
+
+---
+
+## Структура проєкту
 
 ```
 src/app/
 ├── pages/
-│   ├── home/              # Game list — join public or private games, live filter
-│   ├── create-game/       # Mode picker, player count, privacy, custom role builder
-│   └── gameplay/          # Full game UI: phases, role reveal, timers, chat, voting
+│   ├── home/              # Список ігор — приєднатись до публічних/приватних, фільтр
+│   ├── create-game/       # Вибір режиму, кількість гравців, приватність, конструктор ролей
+│   └── gameplay/          # Повний ігровий UI: фази, розкриття ролі, таймери, чат, голосування
 ├── models/
 │   ├── game.model.ts
 │   ├── player.model.ts
 │   └── role.model.ts
 └── services/
-    ├── game.service.ts              # All API calls: games, actions, messages, votes
-    ├── classic-mafia.service.ts     # Classic mode: role assign, resolve night, check win
-    └── extended-mafia.service.ts    # Extended mode: 20 roles, complex resolution logic
+    ├── game.service.ts              # Всі API-виклики: ігри, дії, повідомлення, голоси
+    ├── classic-mafia.service.ts     # Класичний режим: призначення ролей, вирішення ночі, перевірка перемоги
+    └── extended-mafia.service.ts    # Розширений режим: 20 ролей, складна логіка вирішення
 
 public/
-├── card-*.jpg             # Role card images (21 cards including back)
-├── day-to-night.mp4       # Phase transition video: day → night
-└── night-to-day.mp4       # Phase transition video: night → day
+├── card-*.jpg             # Зображення карток ролей (21 картка включно з рубашкою)
+├── day-to-night.mp4       # Відео переходу: день → ніч
+└── night-to-day.mp4       # Відео переходу: ніч → день
 ```
 
 ---
 
-## Game State Machine
+## Скінченний автомат стану гри
 
-All state lives in `game.data` on the server. The client polls every 3 seconds and reacts to phase changes:
+Весь стан зберігається в `game.data` на сервері. Клієнт опитує сервер кожні 3 секунди і реагує на зміни фази:
 
 ```
-lobby
-  └─ start() ──► night (round 1)
-                  └─ timer end ──► day
-                                    └─ timer end ──► voting
-                                                      └─ timer end ──► night (round N)
-                                                                        └─ win condition ──► finished
+лобі
+  └─ start() ──► ніч (раунд 1)
+                  └─ кінець таймера ──► день
+                                         └─ кінець таймера ──► голосування
+                                                                └─ кінець таймера ──► ніч (раунд N)
+                                                                                      └─ умова перемоги ──► завершено
 ```
 
-Phase transitions are triggered by the **game creator's client** — the creator's timer fires the API call to advance the phase. All other clients observe the change on next poll.
+Переходи між фазами ініціює **клієнт творця гри** — його таймер надсилає API-виклик для просування фази. Всі інші клієнти бачать зміну при наступному опитуванні.
 
 ---
 
-## Development
+## Розробка
 
 ```bash
 npm install
-npx ng serve        # dev server at localhost:4200
+npx ng serve        # дев-сервер на localhost:4200
 ```
 
-> The app connects to the live API at `api.webart.work`. CORS is restricted to the production domain — game actions won't work on localhost. Use the deployed site for full testing, or update `environment.ts` to point to a local API instance.
+> Застосунок підключається до живого API на `api.webart.work`. CORS обмежений продакшн-доменом — ігрові дії не працюватимуть на localhost. Для повного тестування використовуй задеплоєний сайт або оновіть `environment.ts` щоб вказував на локальний API.
 
 ---
 
-## Build & Deploy
+## Збірка та деплой
 
 ```bash
-npx ng build        # outputs to dist/role-nowadays/browser
-npx cap sync        # sync assets to Capacitor (Android/iOS)
+npx ng build        # виводить в dist/role-nowadays/browser
+npx cap sync        # синхронізація ресурсів до Capacitor (Android/iOS)
 ```
 
-Push to `master` → GitHub Actions builds → deploys to `gh-pages` branch → served at the custom domain via CNAME.
+Пуш у `master` → GitHub Actions збирає → деплоїть у гілку `gh-pages` → обслуговується на власному домені через CNAME.
 
-The CI pipeline:
+CI/CD пайплайн:
 1. `npm ci` + `npm run build`
-2. Copies `CNAME` and `index.html → 404.html` (SPA fallback for GitHub Pages)
-3. Force-pushes `dist/role-nowadays/browser` to `gh-pages` via SSH deploy key
+2. Копіює `CNAME` та `index.html → 404.html` (SPA fallback для GitHub Pages)
+3. Force-push `dist/role-nowadays/browser` у `gh-pages` через SSH deploy key
 
 ---
 
-## Architecture Notes
+## Архітектурні нотатки
 
-- **Server-driven state** — the client is a thin display layer. All game logic (role resolution, win checks, vote tallying) runs in Angular services that mirror what the server stores.
-- **No WebSockets** — polling every 3s is intentional. Keeps infrastructure simple and avoids connection state issues on mobile browsers.
-- **Night timer is frozen** during the role reveal animation sequence — the timer display shows full duration until the overlay is dismissed, so players aren't punished for watching the animation.
-- **Creator acts as coordinator** — phase advancement is sent by the creator's client only. All other clients are read-only on timing.
-- **Tailwind v3 only** — v4 is incompatible with `@angular/build:application`. Do not upgrade.
+- **Стан керується сервером** — клієнт є тонким шаром відображення. Вся ігрова логіка (вирішення ролей, перевірка перемоги, підрахунок голосів) виконується в Angular-сервісах, що дзеркалять те, що зберігає сервер.
+- **Без WebSocket** — опитування кожні 3 секунди є навмисним рішенням. Спрощує інфраструктуру та уникає проблем зі станом з'єднання в мобільних браузерах.
+- **Таймер ночі заморожений** під час анімації розкриття ролі — відображення таймера показує повну тривалість поки оверлей не закрито, щоб гравці не страждали за перегляд анімації.
+- **Творець як координатор** — просування фаз надсилається лише клієнтом творця. Всі інші клієнти є лише спостерігачами за часом.
+- **Лише Tailwind v3** — v4 несумісний з `@angular/build:application`. Не оновлювати.

@@ -663,7 +663,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
         if (prevPhase && prevPhase !== newPhase && isActivePhase && this.splitLayoutVisible()) {
           if (prevPhase === 'night' && newPhase === 'day') {
             this.transitionVideo.set('/night-to-day.mp4');
-          } else if (prevPhase === 'day' && newPhase === 'night') {
+          } else if ((prevPhase === 'day' || prevPhase === 'voting') && newPhase === 'night') {
             this.transitionVideo.set('/day-to-night.mp4');
           } else {
             this.phaseAnimKey.update(k => k + 1);
@@ -688,7 +688,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       const d = this.gameData;
-      const revealActive = this.showRoleReveal();
+      const revealActive = this.showRoleReveal() || this.revealAfterTransition;
 
       if (d?.phase === 'day' && d.phaseStartedAt) {
         const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
