@@ -66,7 +66,12 @@ type ModeFilter = string | null;
 
         <!-- Game List -->
         <main class="px-5 space-y-4 pb-6">
-          @if (filteredGames().length === 0) {
+          @if (loadError()) {
+            <div class="text-center py-10 space-y-2">
+              <p class="text-red-400/70 text-sm">Помилка завантаження ігор</p>
+              <button (click)="retryLoad()" class="text-xs text-amber-100/40 hover:text-amber-100/60 underline">Спробувати знову</button>
+            </div>
+          } @else if (filteredGames().length === 0) {
             <div class="text-center text-amber-100/20 py-20 text-sm">Ігор не знайдено</div>
           }
           @for (game of filteredGames(); track game._id) {
@@ -130,6 +135,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   showModal = signal(false);
   nickname = signal('');
   tokenLoading = signal(false);
+  loadError = signal(false);
   nicknameValue = '';
 
   filterTabs: { label: string; value: ModeFilter }[] = [
@@ -170,11 +176,23 @@ export class HomeComponent implements OnInit, OnDestroy {
   private startPolling() {
     this.pollSub = interval(5000).pipe(
       startWith(0),
-      switchMap(() => this.gameService.getGames().pipe(catchError(() => EMPTY))),
+      switchMap(() => this.gameService.getGames().pipe(
+        catchError(() => {
+          this.loadError.set(true);
+          return EMPTY;
+        }),
+      )),
     ).subscribe(games => {
       if (!Array.isArray(games)) return;
+      this.loadError.set(false);
       this.allGames.set(games);
     });
+  }
+
+  retryLoad() {
+    this.loadError.set(false);
+    this.pollSub?.unsubscribe();
+    this.startPolling();
   }
 
   ngOnDestroy() { this.pollSub?.unsubscribe(); }

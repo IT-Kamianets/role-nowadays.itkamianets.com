@@ -23,7 +23,7 @@ export interface KnightGameData {
   round: number;
   players: Record<string, KnightPlayerState>;
   currentActions: Record<string, KnightAction | null>;
-  roundHistory: { round: number; events: string[]; hpDelta: Record<string, number> }[];
+  roundHistory: { round: number; events: string[]; hpDelta: Record<string, number>; actions: Record<string, KnightAction | null> }[];
   winner: number | null;
   roundStartedAt: number;
   settings: { roundDuration: number };
@@ -210,8 +210,8 @@ export class KnightService {
       }
     }
 
-    // 7. Record history, clear actions, increment round
-    d.roundHistory.push({ round: d.round, events: [...events], hpDelta });
+    // 7. Record history (зберігаємо самі дії, щоб не парсити рядки)
+    d.roundHistory.push({ round: d.round, events: [...events], hpDelta, actions: { ...d.currentActions } });
     d.currentActions = {};
     d.round++;
     d.roundStartedAt = Date.now();
@@ -236,15 +236,12 @@ export class KnightService {
   }
 
   private findPrevStrike(
-    prevRound: { round: number; events: string[]; hpDelta: Record<string, number> },
+    prevRound: { round: number; events: string[]; hpDelta: Record<string, number>; actions: Record<string, KnightAction | null> },
     attackerIdx: number,
     targetIdx: number
   ): boolean {
-    // We store events as strings; instead check via hpDelta pattern — not reliable.
-    // Better approach: store actions in history. For now, check event strings.
-    return prevRound.events.some(
-      e => e.includes(`Гравець ${attackerIdx + 1} (Атакер) атакує Гравця ${targetIdx + 1}`)
-    );
+    const prevAction = prevRound.actions?.[String(attackerIdx)];
+    return prevAction?.type === 'strike' && prevAction.target === targetIdx;
   }
 
   private roleLabel(role: KnightRole): string {

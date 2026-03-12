@@ -76,12 +76,12 @@ interface ModeOption {
                   <span>5 макс</span>
                 </div>
               } @else if (selectedMode() === 'TrueFace') {
-                <input type="range" min="1" max="20"
+                <input type="range" min="2" max="20"
                   [ngModel]="playerLimit()"
                   (ngModelChange)="playerLimit.set(+$event)"
                   class="w-full accent-amber-600 cursor-pointer">
                 <div class="flex justify-between text-xs text-amber-100/20 mt-2">
-                  <span>1 мін</span>
+                  <span>2 мін</span>
                   <span>20 макс</span>
                 </div>
               } @else {
@@ -422,7 +422,7 @@ export class CreateGameComponent {
     const mode = this.selectedMode();
     let limit = this.playerLimit();
     if (mode === 'Knight') limit = Math.min(5, Math.max(3, limit));
-    if (mode === 'TrueFace') limit = Math.min(20, Math.max(1, limit));
+    if (mode === 'TrueFace') limit = Math.min(20, Math.max(2, limit));
     this.gameService.createGame(mode, limit).subscribe({
       next: (game) => {
         if (game?._id) {

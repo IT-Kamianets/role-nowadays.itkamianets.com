@@ -82,7 +82,7 @@ import { Game } from '../../models/game.model';
 
             @if (isCreator) {
               <button (click)="startGame()"
-                [disabled]="(currentGame()?.players?.length || 0) < 2 || starting()"
+                [disabled]="(currentGame()?.players?.length || 0) < 2 || starting() || !lobbySettings()?.roles?.length"
                 class="w-full bg-purple-700 hover:bg-purple-600 text-purple-50 font-black py-4 rounded-2xl uppercase tracking-wide transition-all active:scale-[0.98] disabled:opacity-40">
                 {{ starting() ? 'Початок...' : 'Почати гру' }}
               </button>
@@ -104,6 +104,14 @@ import { Game } from '../../models/game.model';
                 <p class="text-lg font-black text-purple-100">{{ myRole() }}</p>
               </div>
             </div>
+
+            <!-- Прогрес здогадок (видно всім) -->
+            @if (tfData()!.phase === 'guessing') {
+              <div class="bg-[#1a1025] border border-purple-900/40 rounded-xl px-4 py-2 flex items-center justify-between">
+                <span class="text-xs text-purple-100/40">Подали здогадки</span>
+                <span class="text-sm font-black text-purple-300">{{ guessesSubmitted() }} / {{ playerCount() }}</span>
+              </div>
+            }
 
             @if (myGuessSubmitted()) {
               <div class="bg-purple-900/20 border border-purple-700/30 rounded-2xl p-4 text-center">
