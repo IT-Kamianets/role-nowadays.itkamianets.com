@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiBase: 'https://api.webart.work/api/rnd',
+  apiBase: 'https://api.webart.work',
 };

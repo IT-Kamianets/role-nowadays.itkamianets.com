@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { interval, Subscription, EMPTY } from 'rxjs';
-import { startWith, switchMap, catchError } from 'rxjs/operators';
+import { switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
+import { SocketService } from '../../services/socket.service';
 import { ClassicMafiaService, MafiaGameData } from '../../services/classic-mafia.service';
 import { ExtendedMafiaService } from '../../services/extended-mafia.service';
 import { Game } from '../../models/game.model';
@@ -668,6 +669,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   private roleRevealShown = false;
   private revealAfterTransition = false;
   private pollSub?: Subscription;
+  private socketSub?: Subscription;
   private msgPollSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
   private revealTimeout1?: ReturnType<typeof setTimeout>;
@@ -680,6 +682,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   constructor(
     private gameService: GameService,
+    private socketService: SocketService,
     private classicMafia: ClassicMafiaService,
     private extendedMafia: ExtendedMafiaService,
     private route: ActivatedRoute,
@@ -691,55 +694,25 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.myIndexVal = this.gameService.getPlayerIndex(this.gameId);
 
     if (this.gameId) {
-      this.pollSub = interval(3000).pipe(
-        startWith(0),
+      // Initial load
+      this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY)).subscribe(game => {
+        if (game && typeof game === 'object') this.applyGameUpdate(game);
+      });
+
+      // WebSocket real-time updates
+      this.socketService.connect();
+      this.socketSub = this.socketService.onGameUpdate().subscribe(game => {
+        if (game._id === this.gameId) this.applyGameUpdate(game);
+      });
+
+      // Fallback polling every 30s
+      this.pollSub = interval(30000).pipe(
         switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY))),
       ).subscribe(game => {
-        if (!game || typeof game !== 'object') return;
-
-        const prevPhase = (this.currentGame()?.data as Partial<MafiaGameData>)?.phase;
-        const newPhase  = (game.data as Partial<MafiaGameData>)?.phase;
-        if (prevPhase === 'voting' && newPhase !== 'voting') {
-          this.hasVoted.set(false);
-          this.myVoteTarget.set(null);
-        }
-        this.currentGame.set(game);
-        // Sync new global log entries into myLog
-        const newData = game.data as Partial<MafiaGameData>;
-        const globalLog = newData?.log ?? [];
-        if (globalLog.length > this.lastLogLength) {
-          const newEntries = globalLog.slice(this.lastLogLength);
-          this.myLog.update(l => [
-            ...l,
-            ...newEntries.map(text => ({ text, type: 'event' as const }))
-          ]);
-          this.lastLogLength = globalLog.length;
-        }
-        if (newPhase === 'night') {
-          const round = (game.data as Partial<MafiaGameData>)?.round;
-          if (round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
-            this.roleRevealShown = true;
-            this.revealAfterTransition = true;
-            this.playTransitionVideo('/day-to-night.mp4');
-          }
-        }
-        const isActivePhase = ['night', 'day', 'voting'].includes(newPhase ?? '');
-        if (isActivePhase && !this.splitLayoutVisible() && !this.showRoleReveal()) {
-          this.splitLayoutVisible.set(true);
-        }
-        if (prevPhase && prevPhase !== newPhase && isActivePhase && this.splitLayoutVisible()) {
-          if (prevPhase === 'night' && newPhase === 'day') {
-            this.playTransitionVideo('/night-to-day.mp4');
-          } else if ((prevPhase === 'day' || prevPhase === 'voting') && newPhase === 'night') {
-            this.playTransitionVideo('/day-to-night.mp4');
-          } else {
-            this.phaseAnimKey.update(k => k + 1);
-          }
-        }
+        if (game && typeof game === 'object') this.applyGameUpdate(game);
       });
 
       this.msgPollSub = interval(3000).pipe(
-        startWith(0),
         switchMap(() => this.gameService.getMessages(this.gameId).pipe(catchError(() => EMPTY))),
       ).subscribe(msgs => {
         if (Array.isArray(msgs)) this.allMessages.set(msgs);
@@ -811,8 +784,50 @@ export class GameplayComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
+  private applyGameUpdate(game: Game) {
+    const prevPhase = (this.currentGame()?.data as Partial<MafiaGameData>)?.phase;
+    const newPhase  = (game.data as Partial<MafiaGameData>)?.phase;
+    if (prevPhase === 'voting' && newPhase !== 'voting') {
+      this.hasVoted.set(false);
+      this.myVoteTarget.set(null);
+    }
+    this.currentGame.set(game);
+    const newData = game.data as Partial<MafiaGameData>;
+    const globalLog = newData?.log ?? [];
+    if (globalLog.length > this.lastLogLength) {
+      const newEntries = globalLog.slice(this.lastLogLength);
+      this.myLog.update(l => [
+        ...l,
+        ...newEntries.map(text => ({ text, type: 'event' as const }))
+      ]);
+      this.lastLogLength = globalLog.length;
+    }
+    if (newPhase === 'night') {
+      const round = (game.data as Partial<MafiaGameData>)?.round;
+      if (round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
+        this.roleRevealShown = true;
+        this.revealAfterTransition = true;
+        this.playTransitionVideo('/day-to-night.mp4');
+      }
+    }
+    const isActivePhase = ['night', 'day', 'voting'].includes(newPhase ?? '');
+    if (isActivePhase && !this.splitLayoutVisible() && !this.showRoleReveal()) {
+      this.splitLayoutVisible.set(true);
+    }
+    if (prevPhase && prevPhase !== newPhase && isActivePhase && this.splitLayoutVisible()) {
+      if (prevPhase === 'night' && newPhase === 'day') {
+        this.playTransitionVideo('/night-to-day.mp4');
+      } else if ((prevPhase === 'day' || prevPhase === 'voting') && newPhase === 'night') {
+        this.playTransitionVideo('/day-to-night.mp4');
+      } else {
+        this.phaseAnimKey.update(k => k + 1);
+      }
+    }
+  }
+
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
+    this.socketSub?.unsubscribe();
     this.msgPollSub?.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
     clearTimeout(this.revealTimeout1);
@@ -947,6 +962,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
             this.revealAfterTransition = true;
             this.playTransitionVideo('/day-to-night.mp4');
           }
+          this.gameService.emitUpdate(game);
         }
         this.loading.set(false);
       },
@@ -977,14 +993,24 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const actionText = this.getNightActionLogText(target, role);
     this.myLog.update(l => [...l, { text: actionText, type: 'action' }]);
     this.gameService.submitNightAction(this.gameId, field, target).subscribe({
-      next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
+      next: game => {
+        if (game && typeof game === 'object') {
+          this.currentGame.set(game);
+          this.gameService.emitUpdate(game);
+        }
+      },
     });
   }
 
   submitArsonistIgnite() {
     this.myLog.update(l => [...l, { text: 'Ви підпалили всіх облитих!', type: 'action' }]);
     this.gameService.submitNightAction(this.gameId, 'arsonistIgnite', 1).subscribe({
-      next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
+      next: game => {
+        if (game && typeof game === 'object') {
+          this.currentGame.set(game);
+          this.gameService.emitUpdate(game);
+        }
+      },
     });
   }
 
@@ -993,7 +1019,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const d = this.gameData;
     if (!d || d.phase !== 'day') { this.dayTransitionSent = false; return; }
     this.gameService.updateGame(this.gameId, { data: { ...d, phase: 'voting', votes: {}, phaseStartedAt: Date.now() } }).subscribe({
-      next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
+      next: game => {
+        if (game && typeof game === 'object') {
+          this.currentGame.set(game);
+          this.gameService.emitUpdate(game);
+        }
+      },
       error: () => { this.dayTransitionSent = false; },
     });
   }
@@ -1016,7 +1047,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
       ? { ...resolved, phase: 'finished', winner }
       : { ...resolved, phaseStartedAt: Date.now() };
     this.gameService.updateGame(this.gameId, { data: finalData }).subscribe({
-      next: game => { if (game) this.currentGame.set(game); },
+      next: game => {
+        if (game) {
+          this.currentGame.set(game);
+          this.gameService.emitUpdate(game);
+        }
+      },
       error: () => { this.nightTransitionSent = false; },
     });
   }
@@ -1049,7 +1085,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
       ? { ...resolved, phase: 'finished', winner }
       : { ...resolved, phaseStartedAt: Date.now() };
     this.gameService.updateGame(this.gameId, { data: finalData }).subscribe({
-      next: game => { if (game) this.currentGame.set(game); },
+      next: game => {
+        if (game) {
+          this.currentGame.set(game);
+          this.gameService.emitUpdate(game);
+        }
+      },
       error: () => { this.votingTransitionSent = false; },
     });
   }
@@ -1072,6 +1113,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       next: game => {
         if (!game || typeof game !== 'object') return;
         this.currentGame.set(game);
+        this.gameService.emitUpdate(game);
       },
       error: () => { this.hasVoted.set(false); this.myVoteTarget.set(null); },
     });

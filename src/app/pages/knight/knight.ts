@@ -2,8 +2,9 @@ import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { interval, Subscription, EMPTY } from 'rxjs';
-import { startWith, switchMap, catchError } from 'rxjs/operators';
+import { switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
+import { SocketService } from '../../services/socket.service';
 import { KnightService, KnightGameData, KnightAction, KnightRole } from '../../services/knight.service';
 import { Game } from '../../models/game.model';
 
@@ -374,6 +375,7 @@ export class KnightComponent implements OnInit, OnDestroy {
   myIndex = -1;
 
   private pollSub?: Subscription;
+  private socketSub?: Subscription;
   private timerSub?: Subscription;
   private roundTransitionSent = false;
   private resultsTransitionSent = false;
@@ -383,6 +385,7 @@ export class KnightComponent implements OnInit, OnDestroy {
     private router: Router,
     private gameService: GameService,
     private knightService: KnightService,
+    private socketService: SocketService,
   ) {}
 
   ngOnInit() {
@@ -390,27 +393,41 @@ export class KnightComponent implements OnInit, OnDestroy {
     this.isCreator = this.gameService.isCreator(this.gameId);
     this.myIndex = this.gameService.getPlayerIndex(this.gameId);
 
-    this.pollSub = interval(3000).pipe(
-      startWith(0),
-      switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY))),
-    ).subscribe(game => {
-      this.currentGame.set(game);
-      const raw = game.data;
-      if (raw) {
-        try {
-          const parsed: KnightGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          this.knightData.set(parsed);
-          this.syncTimer(parsed);
-        } catch {}
-      }
+    // Initial load
+    this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY)).subscribe(game => {
+      this.handleGameUpdate(game);
     });
+
+    // WebSocket real-time updates
+    this.socketService.connect();
+    this.socketSub = this.socketService.onGameUpdate().subscribe(game => {
+      if (game._id === this.gameId) this.handleGameUpdate(game);
+    });
+
+    // Fallback polling every 30s
+    this.pollSub = interval(30000).pipe(
+      switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY))),
+    ).subscribe(game => this.handleGameUpdate(game));
 
     this.timerSub = interval(1000).subscribe(() => this.tickTimer());
   }
 
   ngOnDestroy() {
     this.pollSub?.unsubscribe();
+    this.socketSub?.unsubscribe();
     this.timerSub?.unsubscribe();
+  }
+
+  private handleGameUpdate(game: Game) {
+    this.currentGame.set(game);
+    const raw = game.data;
+    if (raw) {
+      try {
+        const parsed: KnightGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        this.knightData.set(parsed);
+        this.syncTimer(parsed);
+      } catch {}
+    }
   }
 
   // ---------- Computed getters ----------
@@ -507,7 +524,10 @@ export class KnightComponent implements OnInit, OnDestroy {
     const settings = this.loadSettings();
     const data = this.knightService.initGameData(game.players.length, settings);
     this.gameService.updateGame(this.gameId, { data: JSON.stringify(data), status: 'running' }).subscribe({
-      next: () => this.starting.set(false),
+      next: (updatedGame) => {
+        this.starting.set(false);
+        if (updatedGame) this.gameService.emitUpdate(updatedGame);
+      },
       error: () => this.starting.set(false),
     });
   }
@@ -543,6 +563,7 @@ export class KnightComponent implements OnInit, OnDestroy {
             parsed.players[String(this.myIndex)].pendingPenalty = localUpdated.players[String(this.myIndex)].pendingPenalty;
           }
           this.knightData.set(parsed);
+          this.gameService.emitUpdate(game);
 
           // Auto-resolve якщо всі живі подали дію
           const alive = Object.entries(parsed.players).filter(([, p]) => p.alive);
@@ -584,6 +605,7 @@ export class KnightComponent implements OnInit, OnDestroy {
           try {
             const parsed: KnightGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;
             this.knightData.set(parsed);
+            this.gameService.emitUpdate(game);
           } catch {}
         }
       },
@@ -597,7 +619,10 @@ export class KnightComponent implements OnInit, OnDestroy {
     this.roundTransitionSent = false;
     const next = { ...d, phase: 'action' as const, roundStartedAt: Date.now(), currentActions: {} };
     this.gameService.updateGame(this.gameId, { data: JSON.stringify(next) }).subscribe({
-      next: () => this.nextRoundLoading.set(false),
+      next: (game) => {
+        this.nextRoundLoading.set(false);
+        if (game) this.gameService.emitUpdate(game);
+      },
       error: () => this.nextRoundLoading.set(false),
     });
   }

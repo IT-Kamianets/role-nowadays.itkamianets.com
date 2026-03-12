@@ -4,13 +4,14 @@ import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { Game, GameMode } from '../models/game.model';
 import { environment } from '../../environments/environment';
+import { SocketService } from './socket.service';
 
-const BASE = environment.apiBase;
+const BASE = environment.apiBase + '/api/rnd';
 const OPTIONS = { headers: { token: '' } };
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private socketService: SocketService) {
     const token = localStorage.getItem('token');
     if (token) OPTIONS.headers.token = token;
   }
@@ -108,5 +109,9 @@ export class GameService {
   getPlayerIndex(gameId: string): number {
     const val = localStorage.getItem(`playerIndex_${gameId}`);
     return val !== null ? parseInt(val, 10) : -1;
+  }
+
+  emitUpdate(game: Game): void {
+    this.socketService.emit(game);
   }
 }
