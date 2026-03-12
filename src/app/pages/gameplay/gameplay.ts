@@ -2,18 +2,19 @@ import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { interval, Subscription, EMPTY } from 'rxjs';
+import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { SocketService } from '../../services/socket.service';
 import { ClassicMafiaService, MafiaGameData } from '../../services/classic-mafia.service';
 import { ExtendedMafiaService } from '../../services/extended-mafia.service';
 import { Game } from '../../models/game.model';
+import { GameLogComponent } from '../../components/game-log/game-log';
 
 @Component({
   selector: 'app-gameplay',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GameLogComponent],
   template: `
     <!-- Phase Transition Video Overlay -->
     @if (transitionVideo()) {
@@ -317,19 +318,7 @@ import { Game } from '../../models/game.model';
               </div>
             }
 
-            @if (myLog().length) {
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
-                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
-                  @for (entry of myLog(); track $index) {
-                    <div class="px-4 py-2.5 flex items-start gap-2.5">
-                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
-                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
+            <app-game-log [entries]="myLog()" />
           }
 
           <!-- ═══════════════════════════════════════════════════ DAY -->
@@ -438,19 +427,7 @@ import { Game } from '../../models/game.model';
             </div>
 
             <!-- Event log -->
-            @if (myLog().length) {
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
-                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
-                  @for (entry of myLog(); track $index) {
-                    <div class="px-4 py-2.5 flex items-start gap-2.5">
-                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
-                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
+            <app-game-log [entries]="myLog()" />
 
             <!-- Day chat -->
             <div>
@@ -563,19 +540,7 @@ import { Game } from '../../models/game.model';
               </div>
             }
 
-            @if (myLog().length) {
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
-                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
-                  @for (entry of myLog(); track $index) {
-                    <div class="px-4 py-2.5 flex items-start gap-2.5">
-                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
-                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
+            <app-game-log [entries]="myLog()" />
           }
 
           <!-- ═══════════════════════════════════════════════════ FINISHED -->
@@ -614,19 +579,7 @@ import { Game } from '../../models/game.model';
             </div>
 
             <!-- Game log -->
-            @if (myLog().length) {
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
-                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
-                  @for (entry of myLog(); track $index) {
-                    <div class="px-4 py-2.5 flex items-start gap-2.5">
-                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
-                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
+            <app-game-log [entries]="myLog()" />
 
             <button (click)="back()"
               class="w-full bg-amber-700 hover:bg-amber-600 text-amber-50 font-black py-4 rounded-2xl uppercase tracking-wide active:scale-[0.97] transition-all">
@@ -695,8 +648,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
     if (this.gameId) {
       // Initial load
-      this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY)).subscribe(game => {
-        if (game && typeof game === 'object') this.applyGameUpdate(game);
+      this.gameService.getGame(this.gameId).pipe(catchError(() => of(null))).subscribe(game => {
+        if (game) this.applyGameUpdate(game);
       });
 
       // WebSocket real-time updates
@@ -707,13 +660,13 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
       // Fallback polling every 30s
       this.pollSub = interval(30000).pipe(
-        switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY))),
+        switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => of(null)))),
       ).subscribe(game => {
-        if (game && typeof game === 'object') this.applyGameUpdate(game);
+        if (game) this.applyGameUpdate(game);
       });
 
       this.msgPollSub = interval(3000).pipe(
-        switchMap(() => this.gameService.getMessages(this.gameId).pipe(catchError(() => EMPTY))),
+        switchMap(() => this.gameService.getMessages(this.gameId).pipe(catchError(() => of(null)))),
       ).subscribe(msgs => {
         if (Array.isArray(msgs)) this.allMessages.set(msgs);
       });
@@ -1287,27 +1240,6 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   get isCreator(): boolean {
     return this.gameService.isCreator(this.gameId);
-  }
-
-  // ── Log helpers ───────────────────────────────────────────────────────
-
-  logEntryIcon(entry: { text: string; type: 'event' | 'action' }): string {
-    if (entry.type === 'action') return '✍️';
-    if (entry.text.includes('загинув від руки') || entry.text.includes('загинув')) return '💀';
-    if (entry.text.includes('усунений голосуванням')) return '⚖️';
-    if (entry.text.includes('врятував')) return '💚';
-    if (entry.text.includes('Ніхто не загинув')) return '✨';
-    if (entry.text.includes('Гра розпочалась')) return '⚔️';
-    return '📋';
-  }
-
-  logEntryClass(entry: { text: string; type: 'event' | 'action' }): string {
-    if (entry.type === 'action') return 'text-amber-400/90';
-    if (entry.text.includes('загинув від руки') || entry.text.includes('загинув')) return 'text-red-400/80';
-    if (entry.text.includes('усунений голосуванням')) return 'text-orange-400/80';
-    if (entry.text.includes('врятував') || entry.text.includes('Ніхто не загинув')) return 'text-green-400/80';
-    if (entry.text.includes('Гра розпочалась')) return 'text-amber-400/80';
-    return 'text-amber-100/50';
   }
 
   private getNightActionLogText(target: number, role: string): string {

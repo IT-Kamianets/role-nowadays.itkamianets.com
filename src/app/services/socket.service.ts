@@ -11,8 +11,14 @@ export class SocketService implements OnDestroy {
 
   connect(): void {
     if (this.socket) return;
-    this.socket = io(environment.apiBase);
+    this.socket = io(environment.apiBase, { reconnection: true, reconnectionDelay: 2000 });
     this.socket.on('gamerole', (game: Game) => this.gameUpdate$.next(game));
+    this.socket.on('disconnect', (reason: string) => {
+      console.warn('[SocketService] disconnected:', reason);
+    });
+    this.socket.on('reconnect', (attempt: number) => {
+      console.info('[SocketService] reconnected after', attempt, 'attempt(s)');
+    });
   }
 
   onGameUpdate(): Observable<Game> {
