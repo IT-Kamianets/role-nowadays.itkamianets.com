@@ -2,7 +2,7 @@ import { Component, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { interval, Subscription, EMPTY } from 'rxjs';
+import { interval, Subscription, of } from 'rxjs';
 import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
 import { GameCardComponent } from '../../components/game-card/game-card';
@@ -179,7 +179,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       switchMap(() => this.gameService.getGames().pipe(
         catchError(() => {
           this.loadError.set(true);
-          return EMPTY;
+          return of(null);
         }),
       )),
     ).subscribe(games => {
