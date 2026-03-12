@@ -59,7 +59,9 @@ export class GameService {
         tap((result) => {
           if (result && typeof result === 'object' && '_id' in result) {
             const game = result as Game;
-            this.setPlayerIndex(game._id, game.players.length - 1);
+            const nickname = this.getNickname();
+            const idx = game.players.findIndex(p => p.name === nickname);
+            this.setPlayerIndex(game._id, idx !== -1 ? idx : game.players.length - 1);
           }
         }),
       );
