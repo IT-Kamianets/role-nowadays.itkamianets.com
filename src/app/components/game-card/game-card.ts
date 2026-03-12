@@ -63,33 +63,43 @@ export class GameCardComponent {
   @Output() join = new EventEmitter<Game>();
 
   readonly modeLabels: Record<string, string> = {
-    Classic: 'Класик',
-    Extended: 'Розширена',
-    Custom: 'Власна',
+    Classic:   'Класик',
+    Extended:  'Розширена',
+    Custom:    'Власна',
+    Knight:    'Лицар',
+    TrueFace:  'True Face',
   };
 
   readonly modeIcon: Record<string, string> = {
     Classic:  '⚔️',
     Extended: '🎭',
     Custom:   '⚙️',
+    Knight:   '🛡️',
+    TrueFace: '🔮',
   };
 
   readonly modeHeaderBg: Record<string, string> = {
     Classic:  'bg-amber-700',
     Extended: 'bg-violet-600',
     Custom:   'bg-teal-600',
+    Knight:   'bg-sky-700',
+    TrueFace: 'bg-purple-700',
   };
 
   readonly modeProgressBar: Record<string, string> = {
     Classic:  'bg-amber-600',
     Extended: 'bg-violet-500',
     Custom:   'bg-teal-500',
+    Knight:   'bg-sky-500',
+    TrueFace: 'bg-purple-500',
   };
 
   readonly modeButtonBg: Record<string, string> = {
     Classic:  'bg-amber-700 hover:bg-amber-600',
     Extended: 'bg-violet-600 hover:bg-violet-500',
     Custom:   'bg-teal-600 hover:bg-teal-500',
+    Knight:   'bg-sky-700 hover:bg-sky-600',
+    TrueFace: 'bg-purple-700 hover:bg-purple-600',
   };
 
   get lobbyMinutesLeft(): number {

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { GameService } from '../../services/game.service';
 
-type GameMode = 'Classic' | 'Extended' | 'Custom';
+type GameMode = 'Classic' | 'Extended' | 'Custom' | 'Knight' | 'TrueFace';
 
 interface ModeOption {
   value: GameMode;
@@ -66,72 +66,175 @@ interface ModeOption {
               <span class="text-3xl font-black text-amber-400">{{ playerLimit() }}</span>
             </div>
             <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4">
-              <input type="range" min="4" max="16"
-                [ngModel]="playerLimit()"
-                (ngModelChange)="playerLimit.set($event)"
-                class="w-full accent-amber-600 cursor-pointer">
-              <div class="flex justify-between text-xs text-amber-100/20 mt-2">
-                <span>4 мін</span>
-                <span>16 макс</span>
-              </div>
+              @if (selectedMode() === 'Knight') {
+                <input type="range" min="3" max="5"
+                  [ngModel]="playerLimit()"
+                  (ngModelChange)="playerLimit.set(+$event)"
+                  class="w-full accent-amber-600 cursor-pointer">
+                <div class="flex justify-between text-xs text-amber-100/20 mt-2">
+                  <span>3 мін</span>
+                  <span>5 макс</span>
+                </div>
+              } @else if (selectedMode() === 'TrueFace') {
+                <input type="range" min="1" max="20"
+                  [ngModel]="playerLimit()"
+                  (ngModelChange)="playerLimit.set(+$event)"
+                  class="w-full accent-amber-600 cursor-pointer">
+                <div class="flex justify-between text-xs text-amber-100/20 mt-2">
+                  <span>1 мін</span>
+                  <span>20 макс</span>
+                </div>
+              } @else {
+                <input type="range" min="4" max="16"
+                  [ngModel]="playerLimit()"
+                  (ngModelChange)="playerLimit.set(+$event)"
+                  class="w-full accent-amber-600 cursor-pointer">
+                <div class="flex justify-between text-xs text-amber-100/20 mt-2">
+                  <span>4 мін</span>
+                  <span>16 макс</span>
+                </div>
+              }
             </div>
           </div>
 
           <!-- Timer Settings -->
-          <div>
-            <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Налаштування таймерів</p>
-            <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4 space-y-5">
+          @if (selectedMode() !== 'Knight' && selectedMode() !== 'TrueFace') {
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Налаштування таймерів</p>
+              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4 space-y-5">
 
-              <!-- Day duration -->
-              <div>
-                <div class="flex items-baseline justify-between mb-2">
-                  <span class="text-sm text-amber-100/60">☀️ Тривалість дня</span>
-                  <span class="text-base font-black text-amber-400">{{ dayDuration() }}с</span>
+                <!-- Day duration -->
+                <div>
+                  <div class="flex items-baseline justify-between mb-2">
+                    <span class="text-sm text-amber-100/60">☀️ Тривалість дня</span>
+                    <span class="text-base font-black text-amber-400">{{ dayDuration() }}с</span>
+                  </div>
+                  <input type="range" min="30" max="180" step="10"
+                    [ngModel]="dayDuration()"
+                    (ngModelChange)="dayDuration.set(+$event)"
+                    class="w-full accent-amber-600 cursor-pointer">
+                  <div class="flex justify-between text-xs text-amber-100/20 mt-1">
+                    <span>30с</span>
+                    <span>180с</span>
+                  </div>
                 </div>
-                <input type="range" min="30" max="180" step="10"
-                  [ngModel]="dayDuration()"
-                  (ngModelChange)="dayDuration.set(+$event)"
+
+                <!-- Night duration -->
+                <div>
+                  <div class="flex items-baseline justify-between mb-2">
+                    <span class="text-sm text-amber-100/60">🌙 Тривалість ночі</span>
+                    <span class="text-base font-black text-amber-400">{{ nightDuration() }}с</span>
+                  </div>
+                  <input type="range" min="15" max="90" step="5"
+                    [ngModel]="nightDuration()"
+                    (ngModelChange)="nightDuration.set(+$event)"
+                    class="w-full accent-amber-600 cursor-pointer">
+                  <div class="flex justify-between text-xs text-amber-100/20 mt-1">
+                    <span>15с</span>
+                    <span>90с</span>
+                  </div>
+                </div>
+
+                <!-- Voting duration -->
+                <div>
+                  <div class="flex items-baseline justify-between mb-2">
+                    <span class="text-sm text-amber-100/60">⚖️ Тривалість голосування</span>
+                    <span class="text-base font-black text-amber-400">{{ votingDuration() }}с</span>
+                  </div>
+                  <input type="range" min="15" max="90" step="5"
+                    [ngModel]="votingDuration()"
+                    (ngModelChange)="votingDuration.set(+$event)"
+                    class="w-full accent-amber-600 cursor-pointer">
+                  <div class="flex justify-between text-xs text-amber-100/20 mt-1">
+                    <span>15с</span>
+                    <span>90с</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          } @else if (selectedMode() === 'Knight') {
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Тривалість раунду</p>
+              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4">
+                <div class="flex items-baseline justify-between mb-2">
+                  <span class="text-sm text-amber-100/60">⚔️ Раунд</span>
+                  <span class="text-base font-black text-amber-400">{{ roundDuration() }}с</span>
+                </div>
+                <input type="range" min="30" max="120" step="10"
+                  [ngModel]="roundDuration()"
+                  (ngModelChange)="roundDuration.set(+$event)"
                   class="w-full accent-amber-600 cursor-pointer">
                 <div class="flex justify-between text-xs text-amber-100/20 mt-1">
                   <span>30с</span>
-                  <span>180с</span>
+                  <span>120с</span>
+                </div>
+              </div>
+            </div>
+          } @else if (selectedMode() === 'TrueFace') {
+            <!-- TrueFace: role pool + round limit + optional round duration -->
+            <div class="space-y-6">
+
+              <!-- Role pool -->
+              <div>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Пул ролей</p>
+                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
+                  @for (role of trueFaceRolePool; track role) {
+                    <div class="flex items-center gap-3 px-4 py-3">
+                      <span class="text-sm text-amber-100/80 flex-1">{{ role }}</span>
+                      <button (click)="toggleTrueFaceRole(role)"
+                        class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm transition-colors"
+                        [class]="isTrueFaceRoleSelected(role)
+                          ? 'bg-amber-700 text-amber-50'
+                          : 'bg-[#2d1f10] text-amber-100/30'">
+                        {{ isTrueFaceRoleSelected(role) ? '✓' : '+' }}
+                      </button>
+                    </div>
+                  }
+                </div>
+                <p class="text-xs text-amber-100/30 mt-2 text-center">Обрано: {{ trueFaceRoles().length }} ролей</p>
+              </div>
+
+              <!-- Round limit -->
+              <div>
+                <div class="flex items-baseline justify-between mb-3">
+                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30">Ліміт раундів</p>
+                  <span class="text-3xl font-black text-amber-400">{{ trueFaceRoundLimit() }}</span>
+                </div>
+                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4">
+                  <input type="range" min="5" max="30"
+                    [ngModel]="trueFaceRoundLimit()"
+                    (ngModelChange)="trueFaceRoundLimit.set(+$event)"
+                    class="w-full accent-amber-600 cursor-pointer">
+                  <div class="flex justify-between text-xs text-amber-100/20 mt-1">
+                    <span>5</span>
+                    <span>30</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Night duration -->
+              <!-- Optional round duration -->
               <div>
-                <div class="flex items-baseline justify-between mb-2">
-                  <span class="text-sm text-amber-100/60">🌙 Тривалість ночі</span>
-                  <span class="text-base font-black text-amber-400">{{ nightDuration() }}с</span>
+                <div class="flex items-baseline justify-between mb-3">
+                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30">Тривалість раунду</p>
+                  <span class="text-3xl font-black text-amber-400">
+                    {{ trueFaceRoundDuration() === 0 ? '∞' : trueFaceRoundDuration() + 'с' }}
+                  </span>
                 </div>
-                <input type="range" min="15" max="90" step="5"
-                  [ngModel]="nightDuration()"
-                  (ngModelChange)="nightDuration.set(+$event)"
-                  class="w-full accent-amber-600 cursor-pointer">
-                <div class="flex justify-between text-xs text-amber-100/20 mt-1">
-                  <span>15с</span>
-                  <span>90с</span>
-                </div>
-              </div>
-
-              <!-- Voting duration -->
-              <div>
-                <div class="flex items-baseline justify-between mb-2">
-                  <span class="text-sm text-amber-100/60">⚖️ Тривалість голосування</span>
-                  <span class="text-base font-black text-amber-400">{{ votingDuration() }}с</span>
-                </div>
-                <input type="range" min="15" max="90" step="5"
-                  [ngModel]="votingDuration()"
-                  (ngModelChange)="votingDuration.set(+$event)"
-                  class="w-full accent-amber-600 cursor-pointer">
-                <div class="flex justify-between text-xs text-amber-100/20 mt-1">
-                  <span>15с</span>
-                  <span>90с</span>
+                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4">
+                  <input type="range" min="0" max="120" step="10"
+                    [ngModel]="trueFaceRoundDuration()"
+                    (ngModelChange)="trueFaceRoundDuration.set(+$event)"
+                    class="w-full accent-amber-600 cursor-pointer">
+                  <div class="flex justify-between text-xs text-amber-100/20 mt-1">
+                    <span>∞ без</span>
+                    <span>120с</span>
+                  </div>
                 </div>
               </div>
 
             </div>
-          </div>
+          }
 
           <!-- Custom Role Picker — only for Custom mode -->
           @if (selectedMode() === 'Custom') {
@@ -198,7 +301,16 @@ interface ModeOption {
             <div class="h-px bg-[#2d1f10]"></div>
             <div class="flex justify-between items-center">
               <span class="text-sm text-amber-100/50">Таймери</span>
-              <span class="text-sm font-semibold text-amber-100">День {{ dayDuration() }}с / Ніч {{ nightDuration() }}с / Голос. {{ votingDuration() }}с</span>
+              @if (selectedMode() === 'Knight') {
+                <span class="text-sm font-semibold text-amber-100">Раунд {{ roundDuration() }}с</span>
+              } @else if (selectedMode() === 'TrueFace') {
+                <span class="text-sm font-semibold text-amber-100">
+                  {{ trueFaceRoundDuration() === 0 ? 'Без таймера' : 'Раунд ' + trueFaceRoundDuration() + 'с' }}
+                  · Ліміт {{ trueFaceRoundLimit() }}
+                </span>
+              } @else {
+                <span class="text-sm font-semibold text-amber-100">День {{ dayDuration() }}с / Ніч {{ nightDuration() }}с / Голос. {{ votingDuration() }}с</span>
+              }
             </div>
           </div>
 
@@ -223,6 +335,8 @@ export class CreateGameComponent {
     { value: 'Classic',  label: 'Класик',    icon: '⚔️', desc: 'Класична Мафія · мафія, детектив, лікар · від 5 гравців' },
     { value: 'Extended', label: 'Розширена', icon: '🎭', desc: 'Більше ролей та складніша механіка' },
     { value: 'Custom',   label: 'Власна',    icon: '⚙️', desc: 'Налаштовуй ролі повністю вручну' },
+    { value: 'Knight',   label: 'Лицар',     icon: '🛡️', desc: 'HP-бої · Атакер / Лікар / Захисник · 3–5 гравців' },
+    { value: 'TrueFace', label: 'True Face', icon: '🔮', desc: 'Вгадай ролі · дедукція · 1–20 гравців' },
   ];
 
   readonly roleGroups = [
@@ -254,8 +368,14 @@ export class CreateGameComponent {
   dayDuration = signal(60);
   nightDuration = signal(30);
   votingDuration = signal(30);
+  roundDuration = signal(60);
   loading = signal(false);
   customRoles = signal<Record<string, number>>({ Mafia: 2, Detective: 1, Doctor: 1, Villager: 4 });
+
+  readonly trueFaceRolePool = ['Knight', 'Healer', 'Assassin', 'Defender', 'Rogue', 'Mage', 'Priest', 'Warrior', 'Ranger', 'Paladin'];
+  trueFaceRoles = signal<string[]>(['Knight', 'Healer', 'Assassin', 'Defender', 'Rogue']);
+  trueFaceRoundLimit = signal(10);
+  trueFaceRoundDuration = signal(0);
 
   customRolesTotal = computed(() => Object.values(this.customRoles()).reduce((a, b) => a + b, 0));
 
@@ -281,24 +401,54 @@ export class CreateGameComponent {
     this.customRoles.update(r => ({ ...r, [role]: next }));
   }
 
+  isTrueFaceRoleSelected(role: string): boolean {
+    return this.trueFaceRoles().includes(role);
+  }
+
+  toggleTrueFaceRole(role: string) {
+    const current = this.trueFaceRoles();
+    if (current.includes(role)) {
+      if (current.length > 1) this.trueFaceRoles.set(current.filter(r => r !== role));
+    } else {
+      this.trueFaceRoles.set([...current, role]);
+    }
+  }
+
   back() { this.router.navigate(['/home']); }
 
   create() {
     if (this.customRolesError()) return;
     this.loading.set(true);
-    this.gameService.createGame(this.selectedMode(), this.playerLimit()).subscribe({
+    const mode = this.selectedMode();
+    let limit = this.playerLimit();
+    if (mode === 'Knight') limit = Math.min(5, Math.max(3, limit));
+    if (mode === 'TrueFace') limit = Math.min(20, Math.max(1, limit));
+    this.gameService.createGame(mode, limit).subscribe({
       next: (game) => {
         if (game?._id) {
-          const settings: Record<string, any> = {
-            dayDuration: this.dayDuration(),
-            nightDuration: this.nightDuration(),
-            votingDuration: this.votingDuration(),
-          };
-          if (this.selectedMode() === 'Custom') {
-            settings['customRoles'] = this.customRoles();
+          let settings: Record<string, any>;
+          let route: string;
+          if (mode === 'Knight') {
+            settings = { roundDuration: this.roundDuration() };
+            route = '/knight';
+          } else if (mode === 'TrueFace') {
+            settings = {
+              roles: this.trueFaceRoles(),
+              roundLimit: this.trueFaceRoundLimit(),
+              roundDuration: this.trueFaceRoundDuration() === 0 ? null : this.trueFaceRoundDuration(),
+            };
+            route = '/true-face';
+          } else {
+            settings = {
+              dayDuration: this.dayDuration(),
+              nightDuration: this.nightDuration(),
+              votingDuration: this.votingDuration(),
+            };
+            if (mode === 'Custom') settings['customRoles'] = this.customRoles();
+            route = '/gameplay';
           }
           localStorage.setItem('gameSettings_' + game._id, JSON.stringify(settings));
-          this.router.navigate(['/gameplay', game._id]);
+          this.router.navigate([route, game._id]);
         } else {
           this.loading.set(false);
         }

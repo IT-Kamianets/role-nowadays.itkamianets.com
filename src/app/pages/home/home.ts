@@ -137,6 +137,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     { label: 'Класик',    value: 'Classic' },
     { label: 'Розширена', value: 'Extended' },
     { label: 'Власна',    value: 'Custom' },
+    { label: 'Лицар',     value: 'Knight' },
+    { label: 'True Face', value: 'TrueFace' },
   ];
 
   filteredGames = computed(() => {
@@ -216,7 +218,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   joinGame(game: Game) {
     if (!this.nickname()) { this.showModal.set(true); return; }
     this.gameService.joinGame(game._id).subscribe(result => {
-      if (result !== false) this.router.navigate(['/gameplay', game._id]);
+      if (result !== false) {
+        const routeMap: Record<string, string> = { Knight: '/knight', TrueFace: '/true-face' };
+        const route = routeMap[(game as any).mode] ?? '/gameplay';
+        this.router.navigate([route, game._id]);
+      }
     });
   }
 

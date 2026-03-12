@@ -18,6 +18,16 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/gameplay/gameplay').then(m => m.GameplayComponent),
   },
   {
+    path: 'knight/:id',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/knight/knight').then(m => m.KnightComponent),
+  },
+  {
+    path: 'true-face/:id',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/true-face/true-face').then(m => m.TrueFaceComponent),
+  },
+  {
     path: 'faq',
     loadComponent: () => import('./pages/faq/faq').then(m => m.FaqComponent),
   },
