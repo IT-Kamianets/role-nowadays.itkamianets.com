@@ -92,9 +92,16 @@ import { Game } from '../../models/game.model';
                     </p>
                   </div>
                 }
-                <!-- Right: role card (static, entry animation once) -->
-                <div class="role-card-anim rounded-xl overflow-hidden shadow-lg shadow-black/50">
-                  <img [src]="roleCardImage(myRole!)" [alt]="myRole!" class="w-full block" />
+                <!-- Right: role card (tappable — hides role from bystanders) -->
+                <div class="role-card-anim flip-card rounded-xl shadow-lg shadow-black/50 cursor-pointer relative"
+                  (click)="toggleRoleCard()">
+                  <div class="flip-inner rounded-xl" [class.flipped]="!roleCardHidden()">
+                    <img src="/card-back.jpg" alt="Card back" class="flip-face w-full rounded-xl block" />
+                    <img [src]="roleCardImage(myRole!)" [alt]="myRole!" class="flip-back-face w-full rounded-xl block" />
+                  </div>
+                  <div class="absolute bottom-1 right-1 text-[10px] leading-none pointer-events-none">
+                    {{ roleCardHidden() ? '🔓' : '🔒' }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -308,6 +315,20 @@ import { Game } from '../../models/game.model';
                 </div>
               </div>
             }
+
+            @if (myLog().length) {
+              <div>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
+                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
+                  @for (entry of myLog(); track $index) {
+                    <div class="px-4 py-2.5 flex items-start gap-2.5">
+                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
+                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
           }
 
           <!-- ═══════════════════════════════════════════════════ DAY -->
@@ -416,12 +437,15 @@ import { Game } from '../../models/game.model';
             </div>
 
             <!-- Event log -->
-            @if (gameData?.log?.length) {
+            @if (myLog().length) {
               <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал подій</p>
-                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4 space-y-2">
-                  @for (entry of gameData?.log ?? []; track $index) {
-                    <p class="text-xs text-amber-100/50 leading-relaxed">{{ entry }}</p>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
+                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
+                  @for (entry of myLog(); track $index) {
+                    <div class="px-4 py-2.5 flex items-start gap-2.5">
+                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
+                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
+                    </div>
                   }
                 </div>
               </div>
@@ -484,7 +508,8 @@ import { Game } from '../../models/game.model';
               </div>
             </div>
 
-            @if (!hasVoted()) {
+            @if (isMyPlayerAlive) {
+              @if (!hasVoted()) {
               <!-- Voting: pick target -->
               <div>
                 <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Живі гравці</p>
@@ -500,12 +525,13 @@ import { Game } from '../../models/game.model';
                   }
                 </div>
               </div>
-            } @else {
+              } @else {
               <!-- Already voted: waiting -->
               <div class="bg-[#1a110a] border border-green-800/40 rounded-2xl p-5 text-center">
                 <div class="text-3xl mb-3">✅</div>
                 <h3 class="text-base font-black text-amber-100 mb-1.5">Ви проголосували за {{ playerName(myVoteTarget() ?? 0) }}</h3>
                 <p class="text-sm text-amber-100/50">Очікування інших... ({{ voteCount }}/{{ alivePlayers.length }})</p>
+                <button (click)="changeVote()" class="mt-4 px-4 py-2 rounded-xl bg-amber-900/40 border border-amber-700/40 text-amber-300 text-sm font-bold active:opacity-70">Змінити голос</button>
               </div>
 
               <!-- Vote progress -->
@@ -523,6 +549,27 @@ import { Game } from '../../models/game.model';
                       } @else {
                         <span class="text-[10px] text-amber-100/25">очікує...</span>
                       }
+                    </div>
+                  }
+                </div>
+              </div>
+              }
+            } @else {
+              <!-- Dead player spectator -->
+              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-5 text-center">
+                <div class="text-3xl mb-3">💀</div>
+                <p class="text-sm text-amber-100/50">Ви вибули. Спостерігайте за голосуванням.</p>
+              </div>
+            }
+
+            @if (myLog().length) {
+              <div>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
+                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
+                  @for (entry of myLog(); track $index) {
+                    <div class="px-4 py-2.5 flex items-start gap-2.5">
+                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
+                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
                     </div>
                   }
                 </div>
@@ -566,12 +613,15 @@ import { Game } from '../../models/game.model';
             </div>
 
             <!-- Game log -->
-            @if (gameData?.log?.length) {
+            @if (myLog().length) {
               <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал гри</p>
-                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4 space-y-2">
-                  @for (entry of gameData?.log ?? []; track $index) {
-                    <p class="text-xs text-amber-100/50 leading-relaxed">{{ entry }}</p>
+                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Журнал дій</p>
+                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden divide-y divide-[#2d1f10]">
+                  @for (entry of myLog(); track $index) {
+                    <div class="px-4 py-2.5 flex items-start gap-2.5">
+                      <span class="text-sm shrink-0 mt-0.5">{{ logEntryIcon(entry) }}</span>
+                      <p class="text-xs leading-relaxed" [class]="logEntryClass(entry)">{{ entry.text }}</p>
+                    </div>
                   }
                 </div>
               </div>
@@ -605,6 +655,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
   splitLayoutVisible = signal(false);
   phaseAnimKey = signal(0);
   transitionVideo = signal<string | null>(null);
+  roleCardHidden = signal(false);
+
+  myLog = signal<{ text: string; type: 'event' | 'action' }[]>([]);
+  private lastLogLength = 0;
 
   myIndexVal = -1;
   dayChatText = '';
@@ -650,6 +704,17 @@ export class GameplayComponent implements OnInit, OnDestroy {
           this.myVoteTarget.set(null);
         }
         this.currentGame.set(game);
+        // Sync new global log entries into myLog
+        const newData = game.data as Partial<MafiaGameData>;
+        const globalLog = newData?.log ?? [];
+        if (globalLog.length > this.lastLogLength) {
+          const newEntries = globalLog.slice(this.lastLogLength);
+          this.myLog.update(l => [
+            ...l,
+            ...newEntries.map(text => ({ text, type: 'event' as const }))
+          ]);
+          this.lastLogLength = globalLog.length;
+        }
         if (newPhase === 'night') {
           const round = (game.data as Partial<MafiaGameData>)?.round;
           if (round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
@@ -690,15 +755,19 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       const d = this.gameData;
-      const revealActive = this.showRoleReveal() || this.revealAfterTransition;
+      const revealActive = this.showRoleReveal() || this.revealAfterTransition || !!this.transitionVideo();
 
       if (d?.phase === 'day' && d.phaseStartedAt) {
-        const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-        const left = Math.max(0, (d.settings?.dayDuration ?? 60) - elapsed);
-        this.daySecondsLeft.set(left);
-        if (left === 0 && !this.dayTransitionSent) {
-          this.dayTransitionSent = true;
-          this.triggerDayToVoting();
+        if (revealActive) {
+          this.daySecondsLeft.set(d.settings?.dayDuration ?? 60);
+        } else {
+          const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
+          const left = Math.max(0, (d.settings?.dayDuration ?? 60) - elapsed);
+          this.daySecondsLeft.set(left);
+          if (left === 0 && !this.dayTransitionSent) {
+            this.dayTransitionSent = true;
+            this.triggerDayToVoting();
+          }
         }
       } else {
         this.daySecondsLeft.set(d?.settings?.dayDuration ?? 60);
@@ -724,12 +793,16 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       if (d?.phase === 'voting' && d.phaseStartedAt) {
-        const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-        const left = Math.max(0, (d.settings?.votingDuration ?? 30) - elapsed);
-        this.votingSecondsLeft.set(left);
-        if (left === 0 && !this.votingTransitionSent) {
-          this.votingTransitionSent = true;
-          this.triggerVotingEnd();
+        if (revealActive) {
+          this.votingSecondsLeft.set(d.settings?.votingDuration ?? 30);
+        } else {
+          const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
+          const left = Math.max(0, (d.settings?.votingDuration ?? 30) - elapsed);
+          this.votingSecondsLeft.set(left);
+          if (left === 0 && !this.votingTransitionSent) {
+            this.votingTransitionSent = true;
+            this.triggerVotingEnd();
+          }
         }
       } else {
         this.votingSecondsLeft.set(d?.settings?.votingDuration ?? 30);
@@ -798,6 +871,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   get votingTargets() {
     return this.alivePlayers.filter(p => p.index !== this.myIndexVal);
+  }
+
+  get isMyPlayerAlive(): boolean {
+    return this.alivePlayers.some(p => p.index === this.myIndexVal);
   }
 
   get allPlayers() {
@@ -896,12 +973,16 @@ export class GameplayComponent implements OnInit, OnDestroy {
     };
     const field = roleToField[role];
     if (!field) return;
+    // Add personal log entry
+    const actionText = this.getNightActionLogText(target, role);
+    this.myLog.update(l => [...l, { text: actionText, type: 'action' }]);
     this.gameService.submitNightAction(this.gameId, field, target).subscribe({
       next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
     });
   }
 
   submitArsonistIgnite() {
+    this.myLog.update(l => [...l, { text: 'Ви підпалили всіх облитих!', type: 'action' }]);
     this.gameService.submitNightAction(this.gameId, 'arsonistIgnite', 1 as any).subscribe({
       next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
     });
@@ -973,10 +1054,20 @@ export class GameplayComponent implements OnInit, OnDestroy {
     });
   }
 
+  toggleRoleCard() {
+    this.roleCardHidden.update(v => !v);
+  }
+
+  changeVote() {
+    this.hasVoted.set(false);
+    this.myVoteTarget.set(null);
+  }
+
   submitVote(targetIndex: number) {
-    if (this.hasVoted() || this.myIndexVal < 0) return;
+    if (this.myIndexVal < 0 || !this.isMyPlayerAlive) return;
     this.hasVoted.set(true);
     this.myVoteTarget.set(targetIndex);
+    this.myLog.update(l => [...l, { text: `Ви проголосували за ${this.playerName(targetIndex)}`, type: 'action' }]);
     this.gameService.submitVote(this.gameId, this.myIndexVal, targetIndex).subscribe({
       next: game => {
         if (!game || typeof game !== 'object') return;
@@ -1154,6 +1245,48 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   get isCreator(): boolean {
     return this.gameService.isCreator(this.gameId);
+  }
+
+  // ── Log helpers ───────────────────────────────────────────────────────
+
+  logEntryIcon(entry: { text: string; type: 'event' | 'action' }): string {
+    if (entry.type === 'action') return '✍️';
+    if (entry.text.includes('загинув від руки') || entry.text.includes('загинув')) return '💀';
+    if (entry.text.includes('усунений голосуванням')) return '⚖️';
+    if (entry.text.includes('врятував')) return '💚';
+    if (entry.text.includes('Ніхто не загинув')) return '✨';
+    if (entry.text.includes('Гра розпочалась')) return '⚔️';
+    return '📋';
+  }
+
+  logEntryClass(entry: { text: string; type: 'event' | 'action' }): string {
+    if (entry.type === 'action') return 'text-amber-400/90';
+    if (entry.text.includes('загинув від руки') || entry.text.includes('загинув')) return 'text-red-400/80';
+    if (entry.text.includes('усунений голосуванням')) return 'text-orange-400/80';
+    if (entry.text.includes('врятував') || entry.text.includes('Ніхто не загинув')) return 'text-green-400/80';
+    if (entry.text.includes('Гра розпочалась')) return 'text-amber-400/80';
+    return 'text-amber-100/50';
+  }
+
+  private getNightActionLogText(target: number, role: string): string {
+    const name = this.playerName(target);
+    const map: Record<string, string> = {
+      Mafia:        `Ви обрали жертву: ${name}`,
+      Godfather:    `Ви обрали жертву: ${name}`,
+      Doctor:       `Ви захистили: ${name}`,
+      Detective:    `Ви перевіряєте: ${name}`,
+      Bodyguard:    `Ви охороняєте: ${name}`,
+      Sheriff:      `Ви перевіряєте: ${name}`,
+      Tracker:      `Ви відстежуєте: ${name}`,
+      Watcher:      `Ви стежите за: ${name}`,
+      Consigliere:  `Ви розвідуєте роль: ${name}`,
+      Roleblocker:  `Ви блокуєте: ${name}`,
+      Poisoner:     `Ви отруюєте: ${name}`,
+      Framer:       `Ви підставляєте: ${name}`,
+      SerialKiller: `Ви обрали жертву: ${name}`,
+      Priest:       `Ви освятили: ${name}`,
+    };
+    return map[role] ?? `Нічна дія → ${name}`;
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────
