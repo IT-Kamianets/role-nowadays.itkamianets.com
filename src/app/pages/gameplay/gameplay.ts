@@ -983,7 +983,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   submitArsonistIgnite() {
     this.myLog.update(l => [...l, { text: 'Ви підпалили всіх облитих!', type: 'action' }]);
-    this.gameService.submitNightAction(this.gameId, 'arsonistIgnite', 1 as any).subscribe({
+    this.gameService.submitNightAction(this.gameId, 'arsonistIgnite', 1).subscribe({
       next: game => { if (game && typeof game === 'object') this.currentGame.set(game); },
     });
   }

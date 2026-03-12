@@ -1,3 +1,5 @@
+export type GameMode = 'Classic' | 'Extended' | 'Custom' | 'Knight' | 'TrueFace';
+
 export interface Player {
   _id: string;
   name: string;
@@ -5,7 +7,7 @@ export interface Player {
 
 export interface Game {
   _id: string;
-  mode: string;
+  mode: GameMode;
   creator: Player;
   status: 'lobby' | 'running' | 'finished' | 'canceled';
   players: Player[];

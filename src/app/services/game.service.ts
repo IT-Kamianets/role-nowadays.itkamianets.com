@@ -2,9 +2,10 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
-import { Game } from '../models/game.model';
+import { Game, GameMode } from '../models/game.model';
+import { environment } from '../../environments/environment';
 
-const BASE = 'https://api.webart.work/api/rnd';
+const BASE = environment.apiBase;
 const OPTIONS = { headers: { token: '' } };
 
 @Injectable({ providedIn: 'root' })
@@ -44,7 +45,7 @@ export class GameService {
     localStorage.setItem('nickname', name.trim());
   }
 
-  createGame(mode: string, maxPlayers: number): Observable<Game> {
+  createGame(mode: GameMode, maxPlayers: number): Observable<Game> {
     return this.http
       .post<Game>(`${BASE}/create`, { mode, maxPlayers }, OPTIONS)
       .pipe(tap((game) => this.setCreator(game._id, 0)));

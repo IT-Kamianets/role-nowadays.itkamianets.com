@@ -1,6 +1,11 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Player } from '../../models/player.model';
+
+interface Player {
+  id: string;
+  name: string;
+  isAlive: boolean;
+}
 
 const AVATAR_GRADIENTS = [
   'from-violet-600 to-purple-700',

@@ -302,7 +302,7 @@ export class TrueFaceComponent implements OnInit, OnDestroy {
       switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY))),
     ).subscribe(game => {
       this.currentGame.set(game);
-      const raw = (game as any).data;
+      const raw = game.data;
       if (raw) {
         try {
           const parsed: TrueFaceGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -358,7 +358,7 @@ export class TrueFaceComponent implements OnInit, OnDestroy {
 
   playerName(index: number): string {
     const players = this.currentGame()?.players ?? [];
-    return (players[index] as any)?.name ?? `Гравець ${index + 1}`;
+    return players[index]?.name ?? `Гравець ${index + 1}`;
   }
 
   myGuessSubmitted(): boolean {
@@ -440,7 +440,7 @@ export class TrueFaceComponent implements OnInit, OnDestroy {
     this.gameService.submitTrueFaceAction(this.gameId, this.myIndex, guess).subscribe({
       next: (game) => {
         this.submittingGuess.set(false);
-        const raw = (game as any).data;
+        const raw = game.data;
         if (raw) {
           try {
             const parsed: TrueFaceGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -465,7 +465,7 @@ export class TrueFaceComponent implements OnInit, OnDestroy {
     const resolved = this.trueFaceService.resolveRound(d);
     this.gameService.updateGame(this.gameId, { data: JSON.stringify(resolved) }).subscribe({
       next: (game) => {
-        const raw = (game as any).data;
+        const raw = game.data;
         if (raw) {
           try {
             const parsed: TrueFaceGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;

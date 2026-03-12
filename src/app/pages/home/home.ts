@@ -238,7 +238,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.gameService.joinGame(game._id).subscribe(result => {
       if (result !== false) {
         const routeMap: Record<string, string> = { Knight: '/knight', TrueFace: '/true-face' };
-        const route = routeMap[(game as any).mode] ?? '/gameplay';
+        const route = routeMap[game.mode] ?? '/gameplay';
         this.router.navigate([route, game._id]);
       }
     });

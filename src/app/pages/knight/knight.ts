@@ -334,6 +334,28 @@ import { Game } from '../../models/game.model';
 
       </div>
     </div>
+
+    <!-- Lock override confirmation modal -->
+    @if (showLockModal()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-5">
+        <div class="w-full max-w-sm bg-[#0e1520] border border-sky-700/40 rounded-2xl p-6 space-y-4">
+          <p class="text-base font-black text-sky-100">⚠️ Ціль заблокована</p>
+          <p class="text-sm text-sky-100/60">
+            Гравець {{ (pendingLockTarget ?? 0) + 1 }} заблокований. Зміна цілі дасть -1&nbsp;HP штраф наступного раунду.
+          </p>
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <button (click)="cancelLockOverride()"
+              class="py-3 rounded-xl font-black text-sm uppercase text-sky-100/60 bg-[#1a2535] border border-sky-900/40 transition-all active:scale-95">
+              Скасувати
+            </button>
+            <button (click)="confirmLockOverride()"
+              class="py-3 rounded-xl font-black text-sm uppercase text-sky-50 bg-red-700 hover:bg-red-600 transition-all active:scale-95">
+              Продовжити
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class KnightComponent implements OnInit, OnDestroy {
@@ -342,6 +364,10 @@ export class KnightComponent implements OnInit, OnDestroy {
   starting = signal(false);
   nextRoundLoading = signal(false);
   timeLeft = signal(0);
+  showLockModal = signal(false);
+
+  private pendingActionType: 'strike' | 'heal' | 'overheal' | 'guard' | null = null;
+  pendingLockTarget: number | null = null;
 
   private gameId = '';
   isCreator = false;
@@ -369,7 +395,7 @@ export class KnightComponent implements OnInit, OnDestroy {
       switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => EMPTY))),
     ).subscribe(game => {
       this.currentGame.set(game);
-      const raw = (game as any).data;
+      const raw = game.data;
       if (raw) {
         try {
           const parsed: KnightGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -495,10 +521,10 @@ export class KnightComponent implements OnInit, OnDestroy {
 
     const isLocked = player.lockedTarget !== null && d.round <= player.lockExpiresAfterRound;
     if (isLocked && target !== player.lockedTarget) {
-      const confirmed = confirm(
-        `⚠️ Ціль заблокована (Гравець ${player.lockedTarget! + 1}). Зміна цілі дасть -1 HP штраф наступного раунду. Продовжити?`
-      );
-      if (!confirmed) return;
+      this.pendingActionType = type;
+      this.pendingLockTarget = target;
+      this.showLockModal.set(true);
+      return;
     }
 
     const action: KnightAction = { type, target };
@@ -508,7 +534,7 @@ export class KnightComponent implements OnInit, OnDestroy {
 
     // Надсилаємо дію через дозволений ендпоінт (будь-який гравець)
     this.gameService.submitKnightAction(this.gameId, this.myIndex, action).subscribe(game => {
-      const raw = (game as any).data;
+      const raw = game.data;
       if (raw) {
         try {
           const parsed: KnightGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -530,13 +556,30 @@ export class KnightComponent implements OnInit, OnDestroy {
     });
   }
 
+  cancelLockOverride() {
+    this.pendingActionType = null;
+    this.pendingLockTarget = null;
+    this.showLockModal.set(false);
+  }
+
+  confirmLockOverride() {
+    this.showLockModal.set(false);
+    if (this.pendingActionType !== null && this.pendingLockTarget !== null) {
+      const type = this.pendingActionType;
+      const target = this.pendingLockTarget;
+      this.pendingActionType = null;
+      this.pendingLockTarget = null;
+      this.submitAction(type, target);
+    }
+  }
+
   triggerRoundResolution() {
     const d = this.knightData();
     if (!d || d.phase !== 'action') return;
     const { data: resolved } = this.knightService.resolveRound(d);
     this.gameService.updateGame(this.gameId, { data: JSON.stringify(resolved) }).subscribe({
       next: (game) => {
-        const raw = (game as any).data;
+        const raw = game.data;
         if (raw) {
           try {
             const parsed: KnightGameData = typeof raw === 'string' ? JSON.parse(raw) : raw;

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { delay, tap } from 'rxjs/operators';
-import { Game, Player } from '../models/game.model';
+import { Game, GameMode, Player } from '../models/game.model';
 
 const GAME_ID = 'mock-game-1';
 
@@ -60,7 +60,7 @@ export class MockGameService {
   getNickname(): string { return localStorage.getItem('nickname') || 'Ви'; }
   setNickname(name: string): void { localStorage.setItem('nickname', name.trim()); }
 
-  createGame(mode: string, maxPlayers: number): Observable<Game> {
+  createGame(mode: GameMode, maxPlayers: number): Observable<Game> {
     const game = this.patch({ mode, maxPlayers, status: 'lobby' });
     this.setCreator(game._id, 0);
     return of(game).pipe(delay(300));
@@ -85,18 +85,33 @@ export class MockGameService {
     return of(game).pipe(delay(200));
   }
 
-  sendDayMessage(gameId: string, text: string): Observable<Game> {
-    const msg = { sender: this.getPlayerIndex(gameId), text };
-    const dayMessages = [...(this.state.data['dayMessages'] || []), msg];
-    const game = this.patch({ data: { ...this.state.data, dayMessages } });
-    return of(game).pipe(delay(100));
+  submitKnightAction(gameId: string, playerIndex: number, action: { type: string; target: number }): Observable<Game> {
+    const currentActions = { ...(this.state.data['currentActions'] || {}), [String(playerIndex)]: action };
+    const game = this.patch({ data: { ...this.state.data, currentActions } });
+    return of(game).pipe(delay(200));
   }
 
-  sendNightMessage(gameId: string, text: string): Observable<Game> {
-    const msg = { sender: this.getPlayerIndex(gameId), text };
-    const nightMessages = [...(this.state.data['nightMessages'] || []), msg];
-    const game = this.patch({ data: { ...this.state.data, nightMessages } });
-    return of(game).pipe(delay(100));
+  submitTrueFaceAction(gameId: string, playerIndex: number, guess: Record<string, string>): Observable<Game> {
+    const currentGuesses = { ...(this.state.data['currentGuesses'] || {}), [String(playerIndex)]: guess };
+    const game = this.patch({ data: { ...this.state.data, currentGuesses } });
+    return of(game).pipe(delay(200));
+  }
+
+  submitNightAction(gameId: string, field: string, target: number): Observable<Game> {
+    const nightActions = { ...(this.state.data['nightActions'] || {}), [field]: target };
+    const game = this.patch({ data: { ...this.state.data, nightActions } });
+    return of(game).pipe(delay(200));
+  }
+
+  sendMessage(gameId: string, text: string, type: 'day' | 'night'): Observable<any> {
+    const msg = { sender: this.getPlayerIndex(gameId), text, type };
+    const messages = [...(this.state.data['messages'] || []), msg];
+    this.patch({ data: { ...this.state.data, messages } });
+    return of({ ok: true }).pipe(delay(100));
+  }
+
+  getMessages(gameId: string): Observable<any[]> {
+    return of(this.state.data['messages'] || []).pipe(delay(100));
   }
 
   setCreator(gameId: string, playerIndex: number): void {
