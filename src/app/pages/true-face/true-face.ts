@@ -168,7 +168,7 @@ import { Game } from '../../models/game.model';
                       </div>
                       <div class="text-right">
                         <span class="text-sm font-black text-purple-300">
-                          +{{ lastRoundResult()!.correctCounts[key(entry.index)] ?? 0 }}
+                          +{{ lastRoundResult()!.correctCounts[key(entry.index)] }}
                         </span>
                         <span class="text-xs text-purple-100/30 ml-1">/ {{ playerCount() - 1 }}</span>
                         <span class="text-xs text-purple-100/20 ml-2">Σ{{ tfData()!.players[key(entry.index)].score }}</span>
@@ -238,7 +238,7 @@ import { Game } from '../../models/game.model';
                   <div class="space-y-1">
                     @for (entry of allPlayersList(); track entry.index) {
                       <p class="text-xs text-purple-100/50">
-                        Гравець {{ entry.index + 1 }}: {{ result.correctCounts[key(entry.index)] ?? 0 }}/{{ playerCount() - 1 }} правильних
+                        Гравець {{ entry.index + 1 }}: {{ result.correctCounts[key(entry.index)] }}/{{ playerCount() - 1 }} правильних
                         @if (result.solvedBy.includes(entry.index)) {
                           <span class="text-yellow-400">★</span>
                         }
