@@ -8,6 +8,7 @@ import { GameService } from '../../services/game.service';
 import { SocketService } from '../../services/socket.service';
 import { ClassicMafiaService, MafiaGameData } from '../../services/classic-mafia.service';
 import { ExtendedMafiaService } from '../../services/extended-mafia.service';
+import { RoleConstantsService } from '../../services/role-constants.service';
 import { Game } from '../../models/game.model';
 import { GameLogComponent } from '../../components/game-log/game-log';
 
@@ -49,6 +50,13 @@ import { GameLogComponent } from '../../components/game-log/game-log';
 
     <div class="min-h-screen bg-[#0d0905]">
       <div class="max-w-md mx-auto">
+
+        <!-- Offline banner -->
+        @if (!isOnline()) {
+          <div class="bg-red-950/80 border-b border-red-800/50 px-5 py-2 text-center text-xs font-bold text-red-300">
+            ⚠️ Немає з'єднання з інтернетом
+          </div>
+        }
 
         <!-- Header -->
         <header class="sticky top-0 z-10 bg-[#0d0905]/95 border-b border-[#2d1f10]">
@@ -614,12 +622,16 @@ export class GameplayComponent implements OnInit, OnDestroy {
   myLog = signal<{ text: string; type: 'event' | 'action' }[]>([]);
   private lastLogLength = 0;
 
+  isOnline = signal(navigator.onLine);
+
   myIndexVal = -1;
   dayChatText = '';
   nightChatText = '';
 
   private gameId = '';
   private roleRevealShown = false;
+  private onlineBound = () => this.isOnline.set(true);
+  private offlineBound = () => this.isOnline.set(false);
   private revealAfterTransition = false;
   private pollSub?: Subscription;
   private socketSub?: Subscription;
@@ -640,6 +652,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     private extendedMafia: ExtendedMafiaService,
     private route: ActivatedRoute,
     private router: Router,
+    private roleConstants: RoleConstantsService,
   ) {}
 
   ngOnInit() {
@@ -654,6 +667,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
       // WebSocket real-time updates
       this.socketService.connect();
+      this.socketService.joinRoom(this.gameId);
       this.socketSub = this.socketService.onGameUpdate().subscribe(game => {
         if (game._id === this.gameId) this.applyGameUpdate(game);
       });
@@ -671,6 +685,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
         if (Array.isArray(msgs)) this.allMessages.set(msgs);
       });
     }
+
+    window.addEventListener('online', this.onlineBound);
+    window.addEventListener('offline', this.offlineBound);
 
     this.timerInterval = setInterval(() => {
       const id = this.gameId;
@@ -787,6 +804,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
     clearTimeout(this.revealTimeout2);
     clearTimeout(this.revealTimeout3);
     clearTimeout(this.videoFallbackTimeout);
+    window.removeEventListener('online', this.onlineBound);
+    window.removeEventListener('offline', this.offlineBound);
   }
 
   // ── Derived state ────────────────────────────────────────────────────
@@ -882,7 +901,13 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   // ── Actions ───────────────────────────────────────────────────────────
 
-  back() { this.router.navigate(['/home']); }
+  back() {
+    const activePhases = ['lobby', 'night', 'day', 'voting'];
+    if (activePhases.includes(this.effectivePhase)) {
+      if (!window.confirm('Покинути гру? Вас буде видалено з кімнати.')) return;
+    }
+    this.router.navigate(['/home']);
+  }
 
   startGame() {
     const g = this.currentGame();
@@ -1284,14 +1309,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   roleIcon(role: string): string {
-    const map: Record<string, string> = {
-      Villager: '🏘️', Detective: '🔍', Doctor: '💊', Bodyguard: '🛡️',
-      Sheriff: '⭐', Tracker: '👁️', Watcher: '🔭', Priest: '✝️', Mayor: '🎖️',
-      Mafia: '🔪', Godfather: '🎭', Consigliere: '📖', Roleblocker: '🚫',
-      Poisoner: '☠️', Framer: '🖼️',
-      Jester: '🤡', Executioner: '⚖️', Survivor: '🏕️', SerialKiller: '🗡️', Arsonist: '🔥',
-    };
-    return map[role] ?? '❓';
+    return this.roleConstants.icon(role);
   }
 
   revealCardBg(role: string): string {
@@ -1372,18 +1390,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   // ── Role name localization ────────────────────────────────────────────
 
-  private readonly ROLE_NAMES_UK: Record<string, string> = {
-    Villager: 'Житель', Detective: 'Детектив', Doctor: 'Лікар',
-    Bodyguard: 'Охоронець', Sheriff: 'Шериф', Tracker: 'Стежник',
-    Watcher: 'Спостерігач', Priest: 'Священик', Mayor: 'Мер',
-    Mafia: 'Мафія', Godfather: 'Хрещений батько', Consigliere: 'Консільєрі',
-    Roleblocker: 'Блокувальник', Poisoner: 'Отруювач', Framer: 'Провокатор',
-    Jester: 'Блазень', Executioner: 'Кат', Survivor: 'Вижилець',
-    SerialKiller: 'Серійний вбивця', Arsonist: 'Підпалювач',
-  };
-
   roleNameUk(role: string): string {
-    return this.ROLE_NAMES_UK[role] ?? role;
+    return this.roleConstants.nameUk(role);
   }
 
   // ── Winner helpers ────────────────────────────────────────────────────

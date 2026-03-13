@@ -25,6 +25,10 @@ export class SocketService implements OnDestroy {
     return this.gameUpdate$.asObservable();
   }
 
+  joinRoom(gameId: string): void {
+    this.socket?.emit('join-room', gameId);
+  }
+
   emit(game: Game): void {
     this.socket?.emit('gamerole', game);
   }

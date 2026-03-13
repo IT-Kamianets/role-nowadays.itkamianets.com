@@ -50,8 +50,8 @@ import { Game } from '../../models/game.model';
             Приєднатись →
           </button>
         } @else {
-          <div class="w-full py-3 rounded-xl text-center text-xs font-bold uppercase text-amber-100/20 bg-black/20">
-            Заповнена
+          <div class="w-full py-3 rounded-xl text-center text-xs font-bold uppercase text-red-400/50 bg-red-950/20 border border-red-900/30">
+            🔒 Заповнена ({{ game.players.length }}/{{ game.maxPlayers }})
           </div>
         }
       </div>

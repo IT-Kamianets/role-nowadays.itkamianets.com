@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { interval, Subscription, of } from 'rxjs';
 import { startWith, switchMap, catchError } from 'rxjs/operators';
 import { GameService } from '../../services/game.service';
+import { ToastService } from '../../services/toast.service';
 import { GameCardComponent } from '../../components/game-card/game-card';
 import { Game } from '../../models/game.model';
 
@@ -66,16 +67,28 @@ type ModeFilter = string | null;
 
         <!-- Game List -->
         <main class="px-5 space-y-4 pb-6">
-          @if (loadError()) {
+          @if (loading()) {
+            @for (i of [1,2,3]; track i) {
+              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden animate-pulse">
+                <div class="h-10 bg-amber-900/20"></div>
+                <div class="px-4 pt-3 pb-4 space-y-3">
+                  <div class="h-3 bg-amber-900/10 rounded-full w-2/3"></div>
+                  <div class="h-1.5 bg-amber-900/10 rounded-full"></div>
+                  <div class="h-10 bg-amber-900/10 rounded-xl"></div>
+                </div>
+              </div>
+            }
+          } @else if (loadError()) {
             <div class="text-center py-10 space-y-2">
               <p class="text-red-400/70 text-sm">Помилка завантаження ігор</p>
               <button (click)="retryLoad()" class="text-xs text-amber-100/40 hover:text-amber-100/60 underline">Спробувати знову</button>
             </div>
           } @else if (filteredGames().length === 0) {
             <div class="text-center text-amber-100/20 py-20 text-sm">Ігор не знайдено</div>
-          }
-          @for (game of filteredGames(); track game._id) {
-            <app-game-card [game]="game" (join)="joinGame($event)" />
+          } @else {
+            @for (game of filteredGames(); track game._id) {
+              <app-game-card [game]="game" (join)="joinGame($event)" />
+            }
           }
         </main>
 
@@ -119,6 +132,9 @@ type ModeFilter = string | null;
             placeholder="Введіть нікнейм..."
             maxlength="30"
             class="w-full bg-[#0d0905] border border-[#2d1f10] rounded-2xl px-4 py-3.5 text-amber-100 text-base placeholder-amber-100/20 outline-none focus:border-amber-700 transition-all" />
+          @if (nicknameValue.trim().length > 0 && nicknameValue.trim().length < 2) {
+            <p class="text-xs text-red-400/80">Мінімум 2 символи</p>
+          }
           <button (click)="saveNickname()"
             [disabled]="nicknameValue.trim().length < 2 || tokenLoading()"
             class="w-full bg-amber-700 text-amber-50 font-black py-3.5 rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98] uppercase tracking-wide">
@@ -136,6 +152,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   nickname = signal('');
   tokenLoading = signal(false);
   loadError = signal(false);
+  loading = signal(true);
   nicknameValue = '';
 
   filterTabs: { label: string; value: ModeFilter }[] = [
@@ -160,7 +177,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private pollSub?: Subscription;
 
-  constructor(private gameService: GameService, private router: Router) {}
+  constructor(private gameService: GameService, private router: Router, private toast: ToastService) {}
 
   ngOnInit() {
     const saved = this.gameService.getNickname();
@@ -183,6 +200,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         }),
       )),
     ).subscribe(games => {
+      this.loading.set(false);
       if (!Array.isArray(games)) return;
       this.loadError.set(false);
       this.allGames.set(games);
@@ -191,6 +209,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   retryLoad() {
     this.loadError.set(false);
+    this.loading.set(true);
     this.pollSub?.unsubscribe();
     this.startPolling();
   }
@@ -219,6 +238,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       error: () => {
         this.tokenLoading.set(false);
         this.nickname.set('');
+        this.toast.show('Не вдалося підключитись', 'error');
       },
     });
   }
@@ -235,12 +255,28 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   joinGame(game: Game) {
     if (!this.nickname()) { this.showModal.set(true); return; }
-    this.gameService.joinGame(game._id).subscribe(result => {
-      if (result !== false) {
-        const routeMap: Record<string, string> = { Knight: '/knight', TrueFace: '/true-face' };
-        const route = routeMap[game.mode] ?? '/gameplay';
-        this.router.navigate([route, game._id]);
-      }
+    this.gameService.joinGame(game._id).subscribe({
+      next: result => {
+        if (result && typeof result === 'object' && '_id' in result) {
+          const routeMap: Record<string, string> = { Knight: '/knight', TrueFace: '/true-face' };
+          const route = routeMap[game.mode] ?? '/gameplay';
+          this.router.navigate([route, game._id]);
+        } else {
+          this.toast.show('Кімната заповнена або закрита', 'error');
+        }
+      },
+      error: (err) => {
+        const msg: string = err?.error?.error ?? '';
+        if (msg === 'Game already started or finished') {
+          this.toast.show('Гра вже почалась', 'error');
+        } else if (msg === 'Game is full') {
+          this.toast.show('Кімната заповнена', 'error');
+        } else if (msg === 'Game not found') {
+          this.toast.show('Гру не знайдено', 'error');
+        } else {
+          this.toast.show('Помилка мережі', 'error');
+        }
+      },
     });
   }
 

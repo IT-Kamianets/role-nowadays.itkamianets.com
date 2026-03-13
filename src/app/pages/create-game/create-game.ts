@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { GameService } from '../../services/game.service';
+import { ToastService } from '../../services/toast.service';
+import { RoleConstantsService } from '../../services/role-constants.service';
 
 type GameMode = 'Classic' | 'Extended' | 'Custom' | 'Knight' | 'TrueFace';
 
@@ -345,23 +347,8 @@ export class CreateGameComponent {
     { label: 'Нейтральні', roles: ['Jester', 'Executioner', 'Survivor', 'SerialKiller', 'Arsonist'] },
   ];
 
-  readonly roleNamesUk: Record<string, string> = {
-    Villager: 'Житель', Detective: 'Детектив', Doctor: 'Лікар',
-    Bodyguard: 'Охоронець', Sheriff: 'Шериф', Tracker: 'Стежник',
-    Watcher: 'Спостерігач', Priest: 'Священик', Mayor: 'Мер',
-    Mafia: 'Мафія', Godfather: 'Хрещений батько', Consigliere: 'Консільєрі',
-    Roleblocker: 'Блокувальник', Poisoner: 'Отруювач', Framer: 'Провокатор',
-    Jester: 'Блазень', Executioner: 'Кат', Survivor: 'Вижилець',
-    SerialKiller: 'Серійний вбивця', Arsonist: 'Підпалювач',
-  };
-
-  readonly roleIcons: Record<string, string> = {
-    Villager: '🏘️', Detective: '🔍', Doctor: '💊', Bodyguard: '🛡️',
-    Sheriff: '⭐', Tracker: '👁️', Watcher: '🔭', Priest: '✝️', Mayor: '🎖️',
-    Mafia: '🔪', Godfather: '🎭', Consigliere: '📖', Roleblocker: '🚫',
-    Poisoner: '☠️', Framer: '🖼️',
-    Jester: '🤡', Executioner: '⚖️', Survivor: '🏕️', SerialKiller: '🗡️', Arsonist: '🔥',
-  };
+  get roleNamesUk() { return this.roleConstants.ROLE_NAMES_UK; }
+  get roleIcons() { return this.roleConstants.ROLE_ICONS; }
 
   selectedMode = signal<GameMode>('Classic');
   playerLimit = signal(8);
@@ -389,7 +376,12 @@ export class CreateGameComponent {
     return null;
   });
 
-  constructor(private gameService: GameService, private router: Router) {}
+  constructor(
+    private gameService: GameService,
+    private router: Router,
+    private toast: ToastService,
+    private roleConstants: RoleConstantsService,
+  ) {}
 
   modeLabel(mode: GameMode): string {
     return this.modeOptions.find(o => o.value === mode)?.label ?? mode;
@@ -426,6 +418,7 @@ export class CreateGameComponent {
     this.gameService.createGame(mode, limit).subscribe({
       next: (game) => {
         if (game?._id) {
+          this.toast.show('Гру створено!', 'success');
           let settings: Record<string, any>;
           let route: string;
           if (mode === 'Knight') {
@@ -453,7 +446,10 @@ export class CreateGameComponent {
           this.loading.set(false);
         }
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.show('Не вдалося створити гру', 'error');
+      },
     });
   }
 }

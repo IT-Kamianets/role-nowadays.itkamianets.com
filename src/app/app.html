@@ -1,1 +1,14 @@
 <router-outlet />
+
+@if (toast.toasts().length > 0) {
+  <div class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-xs w-full pointer-events-none">
+    @for (t of toast.toasts(); track t.id) {
+      <div class="px-4 py-3 rounded-xl border text-sm font-semibold text-white shadow-lg"
+        [class]="t.type === 'success' ? 'bg-green-900/90 border-green-700/50'
+               : t.type === 'error'   ? 'bg-red-900/90 border-red-700/50'
+               :                        'bg-amber-900/90 border-amber-700/50'">
+        {{ t.message }}
+      </div>
+    }
+  </div>
+}
