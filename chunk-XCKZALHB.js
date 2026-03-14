@@ -1,0 +1,1 @@
+import{A as r,r as i}from"./chunk-DDKDSMDV.js";var n=class t{toasts=r([]);show(o,e="info"){let a=Date.now();this.toasts.update(s=>[...s,{id:a,message:o,type:e}]),setTimeout(()=>this.toasts.update(s=>s.filter(c=>c.id!==a)),3500)}static \u0275fac=function(e){return new(e||t)};static \u0275prov=i({token:t,factory:t.\u0275fac,providedIn:"root"})};export{n as a};
