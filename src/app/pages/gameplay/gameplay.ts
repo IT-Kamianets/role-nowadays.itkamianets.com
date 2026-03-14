@@ -56,6 +56,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   private socketSub?: Subscription;
   private msgPollSub?: Subscription;
   private reconnectSub?: Subscription;
+  private connErrorSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
   private revealTimeout1?: ReturnType<typeof setTimeout>;
   private revealTimeout2?: ReturnType<typeof setTimeout>;
@@ -96,6 +97,11 @@ export class GameplayComponent implements OnInit, OnDestroy {
       this.reconnectSub = this.socketService.onReconnect().subscribe(() => {
         this.gameService.getGame(this.gameId).pipe(catchError(() => of(null)))
           .subscribe(game => { if (game) this.applyGameUpdate(game); });
+      });
+
+      // Socket auth / connection errors
+      this.connErrorSub = this.socketService.onConnectionError().subscribe(() => {
+        this.errorMsg.set('З\'єднання з сервером втрачено. Оновіть сторінку.');
       });
 
       // Fallback polling every 30s
@@ -212,6 +218,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.socketSub?.unsubscribe();
     this.msgPollSub?.unsubscribe();
     this.reconnectSub?.unsubscribe();
+    this.connErrorSub?.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
     clearTimeout(this.revealTimeout1);
     clearTimeout(this.revealTimeout2);
@@ -533,6 +540,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.dayChatText = '';
     this.gameService.sendMessage(this.gameId, text, 'day').subscribe({
       next: msg => { if (msg) this.allMessages.update(msgs => [...msgs, msg]); },
+      error: () => {
+        this.dayChatText = text;
+        this.errorMsg.set('Повідомлення не відправлено. Спробуйте знову.');
+      },
     });
   }
 
@@ -542,6 +553,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.nightChatText = '';
     this.gameService.sendMessage(this.gameId, text, 'night').subscribe({
       next: msg => { if (msg) this.allMessages.update(msgs => [...msgs, msg]); },
+      error: () => {
+        this.nightChatText = text;
+        this.errorMsg.set('Повідомлення не відправлено. Спробуйте знову.');
+      },
     });
   }
 

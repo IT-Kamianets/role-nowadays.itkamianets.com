@@ -9,6 +9,7 @@ export class SocketService implements OnDestroy {
   private socket: Socket | null = null;
   private gameUpdate$ = new Subject<Game>();
   private reconnect$ = new Subject<void>();
+  private connectionError$ = new Subject<string>();
   private _currentRoomId: string | null = null;
 
   connect(): void {
@@ -26,6 +27,10 @@ export class SocketService implements OnDestroy {
       }
       this.reconnect$.next();
     });
+    this.socket.on('connect_error', (err: Error) => {
+      console.error('[SocketService] connect_error:', err.message);
+      this.connectionError$.next(err.message);
+    });
   }
 
   onGameUpdate(): Observable<Game> {
@@ -34,6 +39,10 @@ export class SocketService implements OnDestroy {
 
   onReconnect(): Observable<void> {
     return this.reconnect$.asObservable();
+  }
+
+  onConnectionError(): Observable<string> {
+    return this.connectionError$.asObservable();
   }
 
   joinRoom(gameId: string): void {
