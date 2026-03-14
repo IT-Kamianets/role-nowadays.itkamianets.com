@@ -30,6 +30,7 @@ export interface MafiaGameData {
   };
   eliminated: number | null;
   winner: 'village' | 'mafia' | 'jester' | 'executioner' | 'serialkiller' | 'survivor' | null;
+  doctorSelfHealed?: boolean;
   log: string[];
   votes: Record<string, number>;
   phaseStartedAt: number;
@@ -99,6 +100,7 @@ export class ClassicMafiaService {
       night: { mafiaTarget: null, doctorTarget: null, detectiveTarget: null, detectiveResult: null },
       eliminated: null,
       winner: null,
+      doctorSelfHealed: false,
       log: ['Гра розпочалась! Настала перша ніч.'],
       votes: {},
       phaseStartedAt: Date.now(),
@@ -109,7 +111,7 @@ export class ClassicMafiaService {
   }
 
   resolveNight(data: MafiaGameData): { data: MafiaGameData; message: string } {
-    const d: MafiaGameData = JSON.parse(JSON.stringify(data));
+    const d: MafiaGameData = structuredClone(data);
     const { mafiaTarget, doctorTarget, detectiveTarget } = d.night;
 
     if (detectiveTarget !== null) {
@@ -149,7 +151,7 @@ export class ClassicMafiaService {
   }
 
   resolveVoting(data: MafiaGameData, eliminatedIndex: number): MafiaGameData {
-    const d: MafiaGameData = JSON.parse(JSON.stringify(data));
+    const d: MafiaGameData = structuredClone(data);
     d.eliminated = eliminatedIndex;
     d.alive = d.alive.filter(i => i !== eliminatedIndex);
     d.log.push(`Раунд ${d.round}: Гравець ${eliminatedIndex + 1} (${d.roles[String(eliminatedIndex)]}) усунений голосуванням.`);

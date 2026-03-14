@@ -11,594 +11,13 @@ import { ExtendedMafiaService } from '../../services/extended-mafia.service';
 import { RoleConstantsService } from '../../services/role-constants.service';
 import { Game } from '../../models/game.model';
 import { GameLogComponent } from '../../components/game-log/game-log';
+import { calcSecondsLeft, calcLobbySecondsLeft } from '../../utils/phase-timer';
 
 @Component({
   selector: 'app-gameplay',
   standalone: true,
   imports: [CommonModule, FormsModule, GameLogComponent],
-  template: `
-    <!-- Phase Transition Video Overlay -->
-    @if (transitionVideo()) {
-      <div class="fixed inset-0 z-50 bg-black">
-        <video [src]="transitionVideo()!" autoplay muted playsinline preload="auto"
-          class="w-full h-full object-cover"
-          (ended)="onTransitionEnd()"
-          (error)="onTransitionEnd()"
-          (stalled)="onVideoStalled()">
-        </video>
-      </div>
-    }
-
-    <!-- Role Reveal Overlay -->
-    @if (showRoleReveal() && myRoleDef && myRole) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black px-8"
-        [class]="roleRevealed() ? 'pointer-events-none' : ''">
-        <div class="w-full max-w-sm"
-          [class.card-fly-right]="roleRevealed()">
-          <div class="flip-card w-full">
-            <div class="flip-inner w-full rounded-2xl shadow-2xl shadow-black/80"
-              [class.flipped]="cardFlipped()">
-              <img src="/card-back.jpg" alt="Card back"
-                class="flip-face w-full rounded-2xl block" />
-              <img [src]="roleCardImage(myRole!)" [alt]="myRole!"
-                class="flip-back-face w-full rounded-2xl block" />
-            </div>
-          </div>
-        </div>
-      </div>
-    }
-
-    <div class="min-h-screen bg-[#0d0905]">
-      <div class="max-w-md mx-auto">
-
-        <!-- Offline banner -->
-        @if (!isOnline()) {
-          <div class="bg-red-950/80 border-b border-red-800/50 px-5 py-2 text-center text-xs font-bold text-red-300">
-            ⚠️ Немає з'єднання з інтернетом
-          </div>
-        }
-
-        <!-- Header -->
-        <header class="sticky top-0 z-10 bg-[#0d0905]/95 border-b border-[#2d1f10]">
-          <div class="px-5 pt-10 pb-3 flex items-center gap-3">
-            <button (click)="back()"
-              class="w-10 h-10 rounded-xl bg-[#1a110a] border border-[#2d1f10] flex items-center justify-center text-amber-100/50 hover:bg-amber-900/20 transition-colors shrink-0">
-              ←
-            </button>
-            <h1 class="text-lg font-black text-amber-100 flex-1 uppercase tracking-wide">Ігрова кімната</h1>
-            @if (currentGame()?.pass) {
-              <div class="bg-amber-700/20 border border-amber-600/30 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
-                <span class="text-[10px] text-amber-100/40 uppercase tracking-wider">PIN</span>
-                <span class="text-sm font-mono font-bold text-amber-400">{{ currentGame()!.pass }}</span>
-              </div>
-            }
-          </div>
-          @if (splitLayoutVisible() && myRoleDef && myRole) {
-            <div class="px-5 py-3 border-t border-[#2d1f10]">
-              <div class="grid grid-cols-2 gap-3 items-start">
-                <!-- Left: phase panel (animates on phase change) -->
-                @for (key of [phaseAnimKey()]; track key) {
-                  <div class="phase-panel-anim rounded-xl p-3 flex flex-col gap-1"
-                    [class]="effectivePhase === 'night'
-                      ? 'bg-indigo-950/60 border border-indigo-800/40'
-                      : effectivePhase === 'voting'
-                        ? 'bg-red-950/50 border border-red-800/30'
-                        : 'bg-amber-950/50 border border-amber-700/30'">
-                    <div class="text-2xl">
-                      {{ effectivePhase === 'night' ? '🌙' : effectivePhase === 'voting' ? '⚖️' : '☀️' }}
-                    </div>
-                    <p class="text-sm font-black uppercase text-amber-100 leading-tight">
-                      {{ effectivePhase === 'night' ? 'Ніч' : effectivePhase === 'voting' ? 'Голосування' : 'День' }}
-                      {{ (effectivePhase === 'night' || effectivePhase === 'day') ? '· ' + gameData?.round : '' }}
-                    </p>
-                    <p class="text-xl font-black tabular-nums leading-tight"
-                      [class]="effectivePhase === 'night'
-                        ? (nightSecondsLeft() <= 10 ? 'text-red-400' : 'text-indigo-300')
-                        : effectivePhase === 'voting'
-                          ? (votingSecondsLeft() <= 10 ? 'text-red-400' : 'text-red-300')
-                          : (daySecondsLeft() <= 10 ? 'text-red-400' : 'text-amber-400')">
-                      {{ effectivePhase === 'night' ? nightSecondsLeft() : effectivePhase === 'voting' ? votingSecondsLeft() : daySecondsLeft() }}
-                      <span class="text-[10px] text-amber-100/30 font-normal">сек</span>
-                    </p>
-                  </div>
-                }
-                <!-- Right: role card (tappable — hides role from bystanders) -->
-                <div class="role-card-anim flip-card rounded-xl shadow-lg shadow-black/50 cursor-pointer relative"
-                  (click)="toggleRoleCard()">
-                  <div class="flip-inner rounded-xl" [class.flipped]="!roleCardHidden()">
-                    <img src="/card-back.jpg" alt="Card back" class="flip-face w-full rounded-xl block" />
-                    <img [src]="roleCardImage(myRole!)" [alt]="myRole!" class="flip-back-face w-full rounded-xl block" />
-                  </div>
-                  <div class="absolute bottom-1 right-1 text-[10px] leading-none pointer-events-none">
-                    {{ roleCardHidden() ? '🔓' : '🔒' }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          }
-        </header>
-
-        <main class="px-5 pt-5 pb-28 space-y-5">
-
-          <!-- LOADING -->
-          @if (effectivePhase === 'loading') {
-            <div class="flex items-center justify-center py-20">
-              <div class="w-8 h-8 rounded-full border-2 border-amber-700 border-t-transparent animate-spin"></div>
-            </div>
-          }
-
-          <!-- ═══════════════════════════════════════════════════ LOBBY -->
-          @if (effectivePhase === 'lobby') {
-
-            <!-- Hero banner -->
-            <div class="relative overflow-hidden rounded-2xl border border-[#2d1f10] p-5 bg-[#1a110a]">
-              <div class="absolute top-0 right-0 w-32 h-32 rounded-full bg-amber-700/10 blur-2xl pointer-events-none"></div>
-              <div class="relative flex items-center gap-4">
-                <div class="w-14 h-14 rounded-2xl bg-amber-900/40 border border-amber-700/20 flex items-center justify-center text-2xl shrink-0">
-                  🏛️
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-700/80 mb-0.5">Очікування гравців</p>
-                  <p class="text-lg font-black text-amber-100 uppercase tracking-wide">{{ currentGame()?.mode ?? '—' }}</p>
-                  <p class="text-xs text-amber-100/30 mt-0.5">{{ currentGame()?.players?.length ?? 0 }} з {{ currentGame()?.maxPlayers ?? '?' }} приєдналось</p>
-                </div>
-              </div>
-              <div class="mt-4 bg-amber-900/20 rounded-full h-1 overflow-hidden">
-                <div class="bg-amber-700 h-full rounded-full transition-all duration-500"
-                  [style.width.%]="((currentGame()?.players?.length ?? 0) / (currentGame()?.maxPlayers ?? 1)) * 100">
-                </div>
-              </div>
-              <div class="mt-3 flex items-center justify-between">
-                <p class="text-[10px] text-amber-100/25 uppercase tracking-wider">Лобі дійсне</p>
-                <p class="text-[11px] font-mono font-bold tabular-nums"
-                  [class]="lobbySecondsLeft() <= 120 ? 'text-red-400' : 'text-amber-100/40'">
-                  {{ formatLobbyTime(lobbySecondsLeft()) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- PIN card -->
-            @if (currentGame()?.pass) {
-              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl px-5 py-4 flex items-center gap-4">
-                <div class="flex-1">
-                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-1.5">PIN для входу</p>
-                  <p class="text-3xl font-black font-mono tracking-[0.2em] text-amber-400">{{ currentGame()!.pass }}</p>
-                </div>
-                <div class="w-10 h-10 rounded-xl bg-amber-700/15 border border-amber-600/20 flex items-center justify-center text-lg">
-                  🔑
-                </div>
-              </div>
-            }
-
-            <!-- Player list -->
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">
-                Гравці · {{ currentGame()?.players?.length ?? 0 }} / {{ currentGame()?.maxPlayers ?? 0 }}
-              </p>
-              <div class="space-y-2">
-                @for (i of playerIndices; track i) {
-                  <div class="bg-[#1a110a] border border-[#2d1f10] rounded-xl flex items-center gap-3 px-4 py-3">
-                    <div class="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center text-xs font-black text-amber-50 shrink-0">
-                      {{ i + 1 }}
-                    </div>
-                    <span class="text-sm text-amber-100/80">{{ playerName(i) }}</span>
-                    @if (i === myIndexVal) {
-                      <span class="ml-auto text-[10px] text-amber-400 font-bold bg-amber-700/15 px-2 py-0.5 rounded-lg">Ви</span>
-                    }
-                  </div>
-                }
-                @for (i of emptySlotIndices; track i) {
-                  <div class="border border-dashed border-[#2d1f10] rounded-xl flex items-center gap-3 px-4 py-3 opacity-35">
-                    <div class="w-9 h-9 rounded-xl bg-[#2d1f10] flex items-center justify-center text-xs font-black text-amber-100/20 shrink-0">
-                      {{ (currentGame()?.players?.length ?? 0) + i + 1 }}
-                    </div>
-                    <span class="text-sm text-amber-100/20 italic">Очікується...</span>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <!-- Start button — creator only -->
-            @if (isCreator) {
-              <div class="space-y-3">
-                <p class="text-xs text-amber-100/30 text-center">Почніть гру коли збереться достатньо гравців (мін. 2)</p>
-                <button (click)="startGame()" [disabled]="loading() || (currentGame()?.players?.length ?? 0) < 2"
-                  class="w-full bg-amber-700 hover:bg-amber-600 text-amber-50 font-black py-4 rounded-2xl uppercase tracking-wide disabled:opacity-40 active:scale-[0.97] transition-all">
-                  {{ loading() ? 'Запуск...' : '⚔️ Розподілити ролі та почати' }}
-                </button>
-                @if (errorMsg()) {
-                  <p class="text-xs text-red-400 text-center">{{ errorMsg() }}</p>
-                }
-              </div>
-            } @else {
-              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4 text-center">
-                <div class="w-5 h-5 rounded-full border-2 border-amber-700 border-t-transparent animate-spin mx-auto mb-2"></div>
-                <p class="text-sm text-amber-100/40">Очікування хоста для початку гри...</p>
-              </div>
-            }
-          }
-
-          <!-- ═══════════════════════════════════════════════════ NIGHT -->
-          @if (effectivePhase === 'night') {
-
-            <!-- Sleeping roles: no night action -->
-            @if (isSleepingRole(myRole)) {
-              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-6 text-center">
-                <div class="text-4xl mb-3">😴</div>
-                <h3 class="text-base font-black text-amber-100 mb-1.5">Ви заснули...</h3>
-                <p class="text-sm text-amber-100/50">Містяни сплять. Чекайте ранку.</p>
-              </div>
-            }
-
-            <!-- Standard night action roles (all except Arsonist) -->
-            @if (hasNightAction(myRole) && myRole !== 'Arsonist') {
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">{{ roleNightActionLabel }}</p>
-                <div class="space-y-2">
-                  @for (p of currentNightTargets; track p.index) {
-                    <button (click)="submitNightAction(p.index)"
-                      class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-colors text-left"
-                      [class]="myNightTarget === p.index ? 'border-amber-600/60 bg-amber-900/20' : 'bg-[#1a110a] border-[#2d1f10] hover:bg-amber-900/10'">
-                      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-amber-50 shrink-0"
-                        [class]="myNightTarget === p.index ? 'bg-amber-600' : 'bg-amber-700'">
-                        {{ p.index + 1 }}
-                      </div>
-                      <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                      @if (myNightTarget === p.index) {
-                        <span class="text-[10px] text-amber-400 font-bold">Вибрано ✓</span>
-                      }
-                    </button>
-                  }
-                </div>
-                @if (hasSubmittedNightAction) {
-                  <div class="mt-3 bg-green-950/40 border border-green-800/30 rounded-xl p-3 text-center">
-                    <p class="text-xs text-green-400">Дію подано. Очікування інших гравців...</p>
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- Arsonist special UI -->
-            @if (myRole === 'Arsonist') {
-              <div class="space-y-4">
-                <div>
-                  <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-orange-400/70 mb-3">🔥 Облити бензином</p>
-                  <div class="space-y-2">
-                    @for (p of nightTargets; track p.index) {
-                      <button (click)="submitNightAction(p.index)"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors text-left"
-                        [class]="myNightTarget === p.index ? 'border-orange-600/60 bg-orange-900/20' : 'bg-[#1a110a] border-[#2d1f10] hover:bg-orange-900/10'">
-                        <div class="w-9 h-9 rounded-xl bg-orange-700/80 flex items-center justify-center text-xs font-black text-amber-50 shrink-0">
-                          {{ p.index + 1 }}
-                        </div>
-                        <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                        @if (dousedPlayers.includes(p.index)) {
-                          <span class="text-[10px] text-orange-400 font-bold">Облито 🔥</span>
-                        }
-                        @if (myNightTarget === p.index) {
-                          <span class="text-[10px] text-amber-400 font-bold">Вибрано ✓</span>
-                        }
-                      </button>
-                    }
-                  </div>
-                </div>
-                @if (dousedPlayers.length > 0) {
-                  <button (click)="submitArsonistIgnite()"
-                    class="w-full bg-red-700 hover:bg-red-600 text-white font-black py-3 rounded-xl uppercase tracking-wide text-sm transition-all active:scale-[0.97]">
-                    🔥 Підпалити всіх! ({{ dousedPlayers.length }})
-                  </button>
-                }
-                @if (hasSubmittedNightAction) {
-                  <div class="bg-green-950/40 border border-green-800/30 rounded-xl p-3 text-center">
-                    <p class="text-xs text-green-400">Дію подано. Очікування інших гравців...</p>
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- Mafia team night chat -->
-            @if (isMafiaTeamMember(myRole)) {
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-red-400/70 mb-3">🔪 Чат мафії</p>
-                <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden">
-                  <div class="max-h-40 overflow-y-auto p-3 space-y-2 min-h-[40px]">
-                    @for (msg of nightMessages; track $index) {
-                      <div class="text-xs">
-                        <span class="font-bold text-red-400">{{ msg.creator?.name }}</span>
-                        <span class="text-amber-100/60 ml-1">{{ msg.text }}</span>
-                      </div>
-                    }
-                    @if (nightMessages.length === 0) {
-                      <p class="text-xs text-amber-100/20 text-center">Порожньо</p>
-                    }
-                  </div>
-                  <div class="border-t border-[#2d1f10] flex">
-                    <input [(ngModel)]="nightChatText"
-                      (keyup.enter)="sendNightMessage()"
-                      placeholder="Повідомлення мафії..."
-                      class="flex-1 bg-transparent px-3 py-2.5 text-sm text-amber-100 placeholder-amber-100/20 outline-none" />
-                    <button (click)="sendNightMessage()"
-                      class="bg-red-700 rounded-xl px-4 my-1.5 mr-1.5 font-black text-white text-sm transition-colors">
-                      →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            }
-
-            <app-game-log [entries]="myLog()" />
-          }
-
-          <!-- ═══════════════════════════════════════════════════ DAY -->
-          @if (effectivePhase === 'day') {
-
-            <!-- Night result -->
-            <div class="rounded-2xl p-5 border text-center"
-              [class]="gameData?.eliminated !== null && gameData?.eliminated !== undefined
-                ? 'bg-red-950/50 border-red-900/50'
-                : 'bg-green-950/50 border-green-900/50'">
-              @if (gameData?.eliminated !== null && gameData?.eliminated !== undefined) {
-                <div class="text-3xl mb-3">💀</div>
-                <h3 class="text-base font-black text-amber-100 mb-1">{{ playerName(gameData?.eliminated ?? 0) }} загинув</h3>
-                <p class="text-sm text-amber-100/50">{{ roleNameUk(gameData?.roles?.[(gameData?.eliminated ?? 0).toString()] ?? '') }}</p>
-              } @else {
-                <div class="text-3xl mb-3">✨</div>
-                <h3 class="text-base font-black text-amber-100 mb-1">Ніхто не загинув!</h3>
-                <p class="text-sm text-amber-100/50">Лікар захистив або мафія не діяла.</p>
-              }
-            </div>
-
-            <!-- Detective result -->
-            @if (myRole === 'Detective' && gameData?.night?.detectiveResult) {
-              <div class="rounded-2xl p-4 border"
-                [class]="gameData?.night?.detectiveResult === 'mafia'
-                  ? 'bg-red-950/40 border-red-900/30'
-                  : 'bg-green-950/40 border-green-900/30'">
-                <p class="text-xs font-bold mb-2"
-                  [class]="gameData?.night?.detectiveResult === 'mafia' ? 'text-red-400' : 'text-green-400'">
-                  🔍 Результат вашої перевірки
-                </p>
-                <p class="text-sm text-amber-100/80">
-                  {{ playerName(gameData?.night?.detectiveTarget ?? 0) }} —
-                  <strong>{{ gameData?.night?.detectiveResult === 'mafia' ? 'МАФІЯ' : 'МІСТЯНИН' }}</strong>
-                </p>
-              </div>
-            }
-
-            <!-- Sheriff result -->
-            @if (myRole === 'Sheriff' && gameData?.night?.sheriffResult) {
-              <div class="rounded-2xl p-4 border"
-                [class]="gameData?.night?.sheriffResult === 'mafia'
-                  ? 'bg-red-950/40 border-red-900/30'
-                  : 'bg-green-950/40 border-green-900/30'">
-                <p class="text-xs font-bold mb-2"
-                  [class]="gameData?.night?.sheriffResult === 'mafia' ? 'text-red-400' : 'text-green-400'">
-                  ⭐ Результат перевірки шерифа
-                </p>
-                <p class="text-sm text-amber-100/80">
-                  {{ playerName(gameData?.night?.sheriffTarget ?? 0) }} —
-                  <strong>{{ gameData?.night?.sheriffResult === 'mafia' ? 'МАФІЯ' : 'МІСТО' }}</strong>
-                </p>
-              </div>
-            }
-
-            <!-- Consigliere result -->
-            @if (myRole === 'Consigliere' && gameData?.night?.consigliereResult) {
-              <div class="rounded-2xl p-4 border bg-orange-950/40 border-orange-900/30">
-                <p class="text-xs font-bold text-orange-400 mb-2">📖 Результат розвідки</p>
-                <p class="text-sm text-amber-100/80">
-                  {{ playerName(gameData?.night?.consigliereTarget ?? 0) }} —
-                  <strong>{{ roleNameUk(gameData?.night?.consigliereResult ?? '') }}</strong>
-                </p>
-              </div>
-            }
-
-            <!-- Tracker result -->
-            @if (myRole === 'Tracker' && gameData?.night?.trackerResult !== null && gameData?.night?.trackerResult !== undefined) {
-              <div class="rounded-2xl p-4 border bg-cyan-950/40 border-cyan-900/30">
-                <p class="text-xs font-bold text-cyan-400 mb-2">👁️ Результат відстеження</p>
-                <p class="text-sm text-amber-100/80">
-                  {{ playerName(gameData?.night?.trackerTarget ?? 0) }} відвідав
-                  <strong>{{ playerName(gameData?.night?.trackerResult ?? 0) }}</strong>
-                </p>
-              </div>
-            }
-
-            <!-- Watcher result -->
-            @if (myRole === 'Watcher' && gameData?.night?.watcherResult?.length) {
-              <div class="rounded-2xl p-4 border bg-purple-950/40 border-purple-900/30">
-                <p class="text-xs font-bold text-purple-400 mb-2">🔭 Відвідувачі цілі</p>
-                <div class="space-y-1">
-                  @for (visitorIdx of (gameData?.night?.watcherResult ?? []); track visitorIdx) {
-                    <p class="text-sm text-amber-100/80">Гравець {{ visitorIdx + 1 }} — {{ playerName(visitorIdx) }}</p>
-                  }
-                </div>
-              </div>
-            }
-
-            <!-- Alive players -->
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Живі · {{ alivePlayers.length }}</p>
-              <div class="space-y-2">
-                @for (p of alivePlayers; track p.index) {
-                  <div class="bg-[#1a110a] border border-[#2d1f10] rounded-xl flex items-center gap-3 px-4 py-3">
-                    <div class="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center text-xs font-black text-amber-50 shrink-0">
-                      {{ p.index + 1 }}
-                    </div>
-                    <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                    @if (p.index === myIndexVal) {
-                      <span class="text-[10px] text-amber-400 font-bold bg-amber-700/15 px-2 py-0.5 rounded-lg">Ви</span>
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-
-            <!-- Event log -->
-            <app-game-log [entries]="myLog()" />
-
-            <!-- Day chat -->
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Чат · День</p>
-              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden">
-                <div class="max-h-48 overflow-y-auto p-3 space-y-2 min-h-[48px]">
-                  @for (msg of dayMessages; track $index) {
-                    <div class="text-xs">
-                      <span class="font-bold text-amber-400">{{ msg.creator?.name }}</span>
-                      <span class="text-amber-100/60 ml-1">{{ msg.text }}</span>
-                    </div>
-                  }
-                  @if (dayMessages.length === 0) {
-                    <p class="text-xs text-amber-100/20 text-center">Немає повідомлень</p>
-                  }
-                </div>
-                <div class="border-t border-[#2d1f10] flex">
-                  <input [(ngModel)]="dayChatText"
-                    (keyup.enter)="sendDayMessage()"
-                    placeholder="Повідомлення..."
-                    class="flex-1 bg-transparent px-3 py-2.5 text-sm text-amber-100 placeholder-amber-100/20 outline-none" />
-                  <button (click)="sendDayMessage()"
-                    class="bg-amber-700 rounded-xl px-4 my-1.5 mr-1.5 font-black text-amber-50 text-sm transition-colors">
-                    →
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Timer notice -->
-            <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-4 text-center">
-              @if (daySecondsLeft() > 0) {
-                <p class="text-sm text-amber-400/70">Голосування розпочнеться автоматично через {{ daySecondsLeft() }} сек</p>
-              } @else {
-                <p class="text-sm text-amber-400/70">Переходимо до голосування...</p>
-              }
-            </div>
-          }
-
-          <!-- ═══════════════════════════════════════════════════ VOTING -->
-          @if (effectivePhase === 'voting') {
-
-            <div class="bg-red-950/50 border border-red-800/30 rounded-2xl p-5 flex items-center gap-4">
-              <div class="w-14 h-14 rounded-2xl bg-red-800/50 flex items-center justify-center text-3xl shrink-0">⚖️</div>
-              <div class="flex-1">
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-red-400 mb-0.5">Поточна фаза</p>
-                <p class="text-2xl font-black uppercase text-amber-100">Голосування</p>
-                <p class="text-xs text-amber-100/50 mt-0.5">{{ voteCount }}/{{ alivePlayers.length }} проголосували</p>
-              </div>
-              <div class="shrink-0 text-right">
-                <div class="text-2xl font-black tabular-nums"
-                  [class]="votingSecondsLeft() <= 10 ? 'text-red-400' : 'text-red-300'">
-                  {{ votingSecondsLeft() }}
-                </div>
-                <div class="text-[10px] text-amber-100/30 uppercase tracking-wider">сек</div>
-              </div>
-            </div>
-
-            @if (isMyPlayerAlive) {
-              @if (!hasVoted()) {
-              <!-- Voting: pick target -->
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Живі гравці</p>
-                <div class="space-y-2">
-                  @for (p of votingTargets; track p.index) {
-                    <button (click)="submitVote(p.index)"
-                      class="w-full flex items-center gap-3 px-4 py-3.5 bg-[#1a110a] border border-[#2d1f10] rounded-xl transition-colors text-left hover:bg-amber-900/10 active:bg-amber-900/20">
-                      <div class="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center text-xs font-black text-amber-50 shrink-0">
-                        {{ p.index + 1 }}
-                      </div>
-                      <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                    </button>
-                  }
-                </div>
-              </div>
-              } @else {
-              <!-- Already voted: waiting -->
-              <div class="bg-[#1a110a] border border-green-800/40 rounded-2xl p-5 text-center">
-                <div class="text-3xl mb-3">✅</div>
-                <h3 class="text-base font-black text-amber-100 mb-1.5">Ви проголосували за {{ playerName(myVoteTarget() ?? 0) }}</h3>
-                <p class="text-sm text-amber-100/50">Очікування інших... ({{ voteCount }}/{{ alivePlayers.length }})</p>
-                <button (click)="changeVote()" class="mt-4 px-4 py-2 rounded-xl bg-amber-900/40 border border-amber-700/40 text-amber-300 text-sm font-bold active:opacity-70">Змінити голос</button>
-              </div>
-
-              <!-- Vote progress -->
-              <div>
-                <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Живі гравці</p>
-                <div class="space-y-2">
-                  @for (p of alivePlayers; track p.index) {
-                    <div class="bg-[#1a110a] border border-[#2d1f10] rounded-xl flex items-center gap-3 px-4 py-3">
-                      <div class="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center text-xs font-black text-amber-50 shrink-0">
-                        {{ p.index + 1 }}
-                      </div>
-                      <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                      @if (hasPlayerVoted(p.index)) {
-                        <span class="text-[10px] font-black text-green-400 uppercase">Проголосував ✓</span>
-                      } @else {
-                        <span class="text-[10px] text-amber-100/25">очікує...</span>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-              }
-            } @else {
-              <!-- Dead player spectator -->
-              <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl p-5 text-center">
-                <div class="text-3xl mb-3">💀</div>
-                <p class="text-sm text-amber-100/50">Ви вибули. Спостерігайте за голосуванням.</p>
-              </div>
-            }
-
-            <app-game-log [entries]="myLog()" />
-          }
-
-          <!-- ═══════════════════════════════════════════════════ FINISHED -->
-          @if (effectivePhase === 'finished') {
-
-            <!-- Winner banner -->
-            <div class="relative overflow-hidden rounded-2xl p-8 border text-center"
-              [class]="winnerBannerClass()">
-              <div class="text-5xl mb-4">{{ winnerIcon() }}</div>
-              <h2 class="text-2xl font-black text-amber-100 mb-2 uppercase tracking-wide">
-                {{ winnerLabel() }}
-              </h2>
-              <p class="text-sm text-amber-100/50">{{ winnerDescription() }}</p>
-            </div>
-
-            <!-- All roles reveal -->
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Всі ролі</p>
-              <div class="space-y-2">
-                @for (p of allPlayers; track p.index) {
-                  <div class="bg-[#1a110a] border border-[#2d1f10] rounded-xl flex items-center gap-3 px-4 py-3" [class]="!p.isAlive ? 'opacity-40' : ''">
-                    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white shrink-0"
-                      [class]="roleTeamBadgeClass(p.role)">
-                      {{ p.index + 1 }}
-                    </div>
-                    <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                    <span class="text-xs font-semibold" [class]="roleTeamTextClass(p.role)">
-                      {{ roleIcon(p.role) }} {{ roleNameUk(p.role) }}
-                    </span>
-                    @if (!p.isAlive) {
-                      <span class="text-[10px] text-amber-100/25 ml-1">✝</span>
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-
-            <!-- Game log -->
-            <app-game-log [entries]="myLog()" />
-
-            <button (click)="back()"
-              class="w-full bg-amber-700 hover:bg-amber-600 text-amber-50 font-black py-4 rounded-2xl uppercase tracking-wide active:scale-[0.97] transition-all">
-              Нова гра
-            </button>
-          }
-
-        </main>
-      </div>
-    </div>
-  `,
+  templateUrl: './gameplay.html',
 })
 export class GameplayComponent implements OnInit, OnDestroy {
   currentGame = signal<Game | null>(null);
@@ -636,6 +55,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   private pollSub?: Subscription;
   private socketSub?: Subscription;
   private msgPollSub?: Subscription;
+  private reconnectSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
   private revealTimeout1?: ReturnType<typeof setTimeout>;
   private revealTimeout2?: ReturnType<typeof setTimeout>;
@@ -672,6 +92,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
         if (game._id === this.gameId) this.applyGameUpdate(game);
       });
 
+      // Reconnect — re-join room and sync state
+      this.reconnectSub = this.socketService.onReconnect().subscribe(() => {
+        this.gameService.getGame(this.gameId).pipe(catchError(() => of(null)))
+          .subscribe(game => { if (game) this.applyGameUpdate(game); });
+      });
+
       // Fallback polling every 30s
       this.pollSub = interval(30000).pipe(
         switchMap(() => this.gameService.getGame(this.gameId).pipe(catchError(() => of(null)))),
@@ -690,27 +116,21 @@ export class GameplayComponent implements OnInit, OnDestroy {
     window.addEventListener('offline', this.offlineBound);
 
     this.timerInterval = setInterval(() => {
+      const now = Date.now();
       const id = this.gameId;
       if (id && this.effectivePhase === 'lobby') {
-        const created = parseInt(id.substring(0, 8), 16) * 1000;
-        const left = Math.max(0, 1200 - Math.floor((Date.now() - created) / 1000));
-        this.lobbySecondsLeft.set(left);
+        this.lobbySecondsLeft.set(calcLobbySecondsLeft(id, 1200, now));
       }
 
       const d = this.gameData;
       const revealActive = this.showRoleReveal() || this.revealAfterTransition || !!this.transitionVideo();
 
       if (d?.phase === 'day' && d.phaseStartedAt) {
-        if (revealActive) {
-          this.daySecondsLeft.set(d.settings?.dayDuration ?? 60);
-        } else {
-          const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-          const left = Math.max(0, (d.settings?.dayDuration ?? 60) - elapsed);
-          this.daySecondsLeft.set(left);
-          if (left === 0 && !this.dayTransitionSent) {
-            this.dayTransitionSent = true;
-            this.triggerDayToVoting();
-          }
+        const left = calcSecondsLeft(d.phaseStartedAt, d.settings?.dayDuration ?? 60, revealActive, now);
+        this.daySecondsLeft.set(left);
+        if (left === 0 && !revealActive && !this.dayTransitionSent) {
+          this.dayTransitionSent = true;
+          this.triggerDayToVoting();
         }
       } else {
         this.daySecondsLeft.set(d?.settings?.dayDuration ?? 60);
@@ -718,17 +138,11 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       if (d?.phase === 'night' && d.phaseStartedAt) {
-        if (revealActive) {
-          // Freeze the timer display at full duration while role reveal animation plays
-          this.nightSecondsLeft.set(d.settings?.nightDuration ?? 30);
-        } else {
-          const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-          const left = Math.max(0, (d.settings?.nightDuration ?? 30) - elapsed);
-          this.nightSecondsLeft.set(left);
-          if (left === 0 && !this.nightTransitionSent) {
-            this.nightTransitionSent = true;
-            this.triggerNightToDay();
-          }
+        const left = calcSecondsLeft(d.phaseStartedAt, d.settings?.nightDuration ?? 30, revealActive, now);
+        this.nightSecondsLeft.set(left);
+        if (left === 0 && !revealActive && !this.nightTransitionSent) {
+          this.nightTransitionSent = true;
+          this.triggerNightToDay();
         }
       } else {
         this.nightSecondsLeft.set(d?.settings?.nightDuration ?? 30);
@@ -736,16 +150,11 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       if (d?.phase === 'voting' && d.phaseStartedAt) {
-        if (revealActive) {
-          this.votingSecondsLeft.set(d.settings?.votingDuration ?? 30);
-        } else {
-          const elapsed = Math.floor((Date.now() - d.phaseStartedAt) / 1000);
-          const left = Math.max(0, (d.settings?.votingDuration ?? 30) - elapsed);
-          this.votingSecondsLeft.set(left);
-          if (left === 0 && !this.votingTransitionSent) {
-            this.votingTransitionSent = true;
-            this.triggerVotingEnd();
-          }
+        const left = calcSecondsLeft(d.phaseStartedAt, d.settings?.votingDuration ?? 30, revealActive, now);
+        this.votingSecondsLeft.set(left);
+        if (left === 0 && !revealActive && !this.votingTransitionSent) {
+          this.votingTransitionSent = true;
+          this.triggerVotingEnd();
         }
       } else {
         this.votingSecondsLeft.set(d?.settings?.votingDuration ?? 30);
@@ -780,6 +189,9 @@ export class GameplayComponent implements OnInit, OnDestroy {
         this.playTransitionVideo('/day-to-night.mp4');
       }
     }
+    if (newPhase === 'finished' && prevPhase !== 'finished') {
+      this.gameService.clearGame(this.gameId);
+    }
     const isActivePhase = ['night', 'day', 'voting'].includes(newPhase ?? '');
     if (isActivePhase && !this.splitLayoutVisible() && !this.showRoleReveal()) {
       this.splitLayoutVisible.set(true);
@@ -799,6 +211,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
     this.socketSub?.unsubscribe();
     this.msgPollSub?.unsubscribe();
+    this.reconnectSub?.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
     clearTimeout(this.revealTimeout1);
     clearTimeout(this.revealTimeout2);
@@ -906,14 +319,18 @@ export class GameplayComponent implements OnInit, OnDestroy {
     if (activePhases.includes(this.effectivePhase)) {
       if (!window.confirm('Покинути гру? Вас буде видалено з кімнати.')) return;
     }
+    this.gameService.clearGame(this.gameId);
     this.router.navigate(['/home']);
   }
 
   startGame() {
     const g = this.currentGame();
     if (!g) return;
-    const raw = localStorage.getItem('gameSettings_' + this.gameId);
-    const parsed = raw ? JSON.parse(raw) : {};
+    let parsed: Record<string, any> = {};
+    try {
+      const raw = localStorage.getItem('gameSettings_' + this.gameId);
+      parsed = raw ? JSON.parse(raw) : {};
+    } catch { /* Safari private mode or malformed JSON — use defaults */ }
     const settings = {
       dayDuration: parsed.dayDuration ?? 60,
       nightDuration: parsed.nightDuration ?? 30,
@@ -967,9 +384,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
     };
     const field = roleToField[role];
     if (!field) return;
-    // Add personal log entry
+    // Add personal log entry (optimistic)
     const actionText = this.getNightActionLogText(target, role);
     this.myLog.update(l => [...l, { text: actionText, type: 'action' }]);
+    const logLengthBeforeAction = this.myLog().length - 1;
     this.gameService.submitNightAction(this.gameId, field, target).subscribe({
       next: game => {
         if (game && typeof game === 'object') {
@@ -977,17 +395,24 @@ export class GameplayComponent implements OnInit, OnDestroy {
           this.gameService.emitUpdate(game);
         }
       },
+      error: () => {
+        this.myLog.update(l => l.filter((_, i) => i !== logLengthBeforeAction));
+      },
     });
   }
 
   submitArsonistIgnite() {
     this.myLog.update(l => [...l, { text: 'Ви підпалили всіх облитих!', type: 'action' }]);
+    const logEntryIndex = this.myLog().length - 1;
     this.gameService.submitNightAction(this.gameId, 'arsonistIgnite', 1).subscribe({
       next: game => {
         if (game && typeof game === 'object') {
           this.currentGame.set(game);
           this.gameService.emitUpdate(game);
         }
+      },
+      error: () => {
+        this.myLog.update(l => l.filter((_, i) => i !== logEntryIndex));
       },
     });
   }
@@ -1087,13 +512,18 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.hasVoted.set(true);
     this.myVoteTarget.set(targetIndex);
     this.myLog.update(l => [...l, { text: `Ви проголосували за ${this.playerName(targetIndex)}`, type: 'action' }]);
+    const logEntryIndex = this.myLog().length - 1;
     this.gameService.submitVote(this.gameId, this.myIndexVal, targetIndex).subscribe({
       next: game => {
         if (!game || typeof game !== 'object') return;
         this.currentGame.set(game);
         this.gameService.emitUpdate(game);
       },
-      error: () => { this.hasVoted.set(false); this.myVoteTarget.set(null); },
+      error: () => {
+        this.hasVoted.set(false);
+        this.myVoteTarget.set(null);
+        this.myLog.update(l => l.filter((_, i) => i !== logEntryIndex));
+      },
     });
   }
 

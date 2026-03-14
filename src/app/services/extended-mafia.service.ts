@@ -96,6 +96,7 @@ export class ExtendedMafiaService {
       },
       eliminated: null,
       winner: null,
+      doctorSelfHealed: false,
       log: ['Гра розпочалась! Настала перша ніч.'],
       votes: {},
       phaseStartedAt: Date.now(),
@@ -109,7 +110,7 @@ export class ExtendedMafiaService {
   }
 
   resolveNight(data: MafiaGameData): { data: MafiaGameData; message: string } {
-    const d: MafiaGameData = JSON.parse(JSON.stringify(data));
+    const d: MafiaGameData = structuredClone(data);
     const night = d.night;
     const roles = d.roles;
 
@@ -328,7 +329,7 @@ export class ExtendedMafiaService {
   }
 
   resolveVoting(data: MafiaGameData, eliminatedIndex: number): MafiaGameData {
-    const d: MafiaGameData = JSON.parse(JSON.stringify(data));
+    const d: MafiaGameData = structuredClone(data);
     d.eliminated = eliminatedIndex;
     d.alive = d.alive.filter(i => i !== eliminatedIndex);
     const role = d.roles[String(eliminatedIndex)];

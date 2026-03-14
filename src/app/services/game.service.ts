@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
 import { Game, GameMode } from '../models/game.model';
 import { environment } from '../../environments/environment';
 import { SocketService } from './socket.service';
@@ -12,21 +12,33 @@ const BASE = environment.apiBase + '/api/rnd';
 export class GameService {
   constructor(private http: HttpClient, private socketService: SocketService) {}
 
+  private lsSet(key: string, value: string): void {
+    try { localStorage.setItem(key, value); } catch { /* Safari private mode */ }
+  }
+
+  private lsGet(key: string): string | null {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+
+  private lsRemove(key: string): void {
+    try { localStorage.removeItem(key); } catch { /* Safari private mode */ }
+  }
+
   initToken(name: string): Observable<void> {
     return this.http.post<string>(`${BASE}/token`, { name }).pipe(
       tap((token) => {
-        localStorage.setItem('token', token);
+        this.lsSet('token', token);
       }),
       map(() => void 0),
     );
   }
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('token');
+    return !!this.lsGet('token');
   }
 
   getGames(): Observable<Game[]> {
-    return this.http.get<Game[]>(`${BASE}/games`);
+    return this.http.get<Game[]>(`${BASE}/games`).pipe(catchError(() => of([])));
   }
 
   getGame(id: string): Observable<Game> {
@@ -34,11 +46,11 @@ export class GameService {
   }
 
   getNickname(): string {
-    return localStorage.getItem('nickname') || '';
+    return this.lsGet('nickname') || '';
   }
 
   setNickname(name: string): void {
-    localStorage.setItem('nickname', name.trim());
+    this.lsSet('nickname', name.trim());
   }
 
   createGame(mode: GameMode, maxPlayers: number): Observable<Game> {
@@ -59,6 +71,7 @@ export class GameService {
             this.setPlayerIndex(game._id, idx !== -1 ? idx : game.players.length - 1);
           }
         }),
+        catchError(() => of(false as false)),
       );
   }
 
@@ -83,29 +96,39 @@ export class GameService {
   }
 
   sendMessage(gameId: string, text: string, type: 'day' | 'night'): Observable<any> {
-    return this.http.post<any>(`${BASE}/message/create`, { _id: gameId, text, data: { type } });
+    return this.http
+      .post<any>(`${BASE}/message/create`, { _id: gameId, text, data: { type } })
+      .pipe(catchError(() => of(null)));
   }
 
   getMessages(gameId: string): Observable<any[]> {
-    return this.http.post<any[]>(`${BASE}/message/get`, { _id: gameId });
+    return this.http
+      .post<any[]>(`${BASE}/message/get`, { _id: gameId })
+      .pipe(catchError(() => of([])));
   }
 
   setCreator(gameId: string, playerIndex: number): void {
-    localStorage.setItem(`isCreator_${gameId}`, 'true');
-    localStorage.setItem(`playerIndex_${gameId}`, String(playerIndex));
+    this.lsSet(`isCreator_${gameId}`, 'true');
+    this.lsSet(`playerIndex_${gameId}`, String(playerIndex));
   }
 
   isCreator(gameId: string): boolean {
-    return localStorage.getItem(`isCreator_${gameId}`) === 'true';
+    return this.lsGet(`isCreator_${gameId}`) === 'true';
   }
 
   setPlayerIndex(gameId: string, index: number): void {
-    localStorage.setItem(`playerIndex_${gameId}`, String(index));
+    this.lsSet(`playerIndex_${gameId}`, String(index));
   }
 
   getPlayerIndex(gameId: string): number {
-    const val = localStorage.getItem(`playerIndex_${gameId}`);
+    const val = this.lsGet(`playerIndex_${gameId}`);
     return val !== null ? parseInt(val, 10) : -1;
+  }
+
+  clearGame(gameId: string): void {
+    this.lsRemove(`playerIndex_${gameId}`);
+    this.lsRemove(`isCreator_${gameId}`);
+    this.lsRemove(`gameSettings_${gameId}`);
   }
 
   emitUpdate(game: Game): void {
