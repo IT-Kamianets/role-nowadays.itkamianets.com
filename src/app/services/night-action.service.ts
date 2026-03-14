@@ -60,7 +60,9 @@ export class NightActionService {
       case 'SerialKiller': return night.serialKillerTarget !== null && night.serialKillerTarget !== undefined;
       case 'Arsonist':     return (night.arsonistTarget !== null && night.arsonistTarget !== undefined) || !!night.arsonistIgnite;
       case 'Priest':       return night.priestTarget !== null && night.priestTarget !== undefined;
-      default: return true;
+      default:
+        console.warn(`NightActionService.hasSubmittedNightAction: unknown role "${role}"`);
+        return false;
     }
   }
 

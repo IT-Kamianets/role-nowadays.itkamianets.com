@@ -1,4 +1,10 @@
+import type { MafiaGameData } from '../services/classic-mafia.service';
+import type { KnightGameData } from '../services/knight.service';
+import type { TrueFaceGameData } from '../services/true-face.service';
+
 export type GameMode = 'Classic' | 'Extended' | 'Custom' | 'Knight' | 'TrueFace';
+
+export type GameData = MafiaGameData | KnightGameData | TrueFaceGameData;
 
 export interface Player {
   _id: string;
@@ -13,5 +19,5 @@ export interface Game {
   players: Player[];
   maxPlayers: number;
   pass: number;
-  data: Record<string, any>;
+  data: GameData;
 }

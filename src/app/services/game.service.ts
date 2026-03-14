@@ -43,7 +43,7 @@ export class GameService {
   }
 
   getGame(id: string): Observable<Game> {
-    return this.http.get<Game>(`${BASE}/game/${id}`);
+    return this.http.get<Game>(`${BASE}/game/${id}`).pipe(catchError(() => of(null as unknown as Game)));
   }
 
   getNickname(): string {
@@ -57,7 +57,10 @@ export class GameService {
   createGame(mode: GameMode, maxPlayers: number): Observable<Game> {
     return this.http
       .post<Game>(`${BASE}/create`, { mode, maxPlayers })
-      .pipe(tap((game) => this.setCreator(game._id, 0)));
+      .pipe(
+        tap((game) => this.setCreator(game._id, 0)),
+        catchError(() => of(null as unknown as Game)),
+      );
   }
 
   joinGame(id: string): Observable<Game | false> {
@@ -77,23 +80,23 @@ export class GameService {
   }
 
   updateGame(id: string, fields: Record<string, any>): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/update`, { _id: id, ...fields });
+    return this.http.post<Game>(`${BASE}/update`, { _id: id, ...fields }).pipe(catchError(() => of(null as unknown as Game)));
   }
 
   submitKnightAction(gameId: string, playerIndex: number, action: { type: string; target: number }): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/knight-action`, { _id: gameId, playerIndex, action });
+    return this.http.post<Game>(`${BASE}/knight-action`, { _id: gameId, playerIndex, action }).pipe(catchError(() => of(null as unknown as Game)));
   }
 
   submitTrueFaceAction(gameId: string, playerIndex: number, guess: Record<string, string>): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/true-face-action`, { _id: gameId, playerIndex, guess });
+    return this.http.post<Game>(`${BASE}/true-face-action`, { _id: gameId, playerIndex, guess }).pipe(catchError(() => of(null as unknown as Game)));
   }
 
   submitNightAction(gameId: string, field: string, target: number): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/night-action`, { _id: gameId, field, target });
+    return this.http.post<Game>(`${BASE}/night-action`, { _id: gameId, field, target }).pipe(catchError(() => of(null as unknown as Game)));
   }
 
   submitVote(gameId: string, voterIndex: number, targetIndex: number): Observable<Game> {
-    return this.http.post<Game>(`${BASE}/vote`, { _id: gameId, voterIndex, targetIndex });
+    return this.http.post<Game>(`${BASE}/vote`, { _id: gameId, voterIndex, targetIndex }).pipe(catchError(() => of(null as unknown as Game)));
   }
 
   sendMessage(gameId: string, text: string, type: 'day' | 'night'): Observable<Message> {
