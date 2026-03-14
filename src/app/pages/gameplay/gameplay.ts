@@ -339,16 +339,16 @@ export class GameplayComponent implements OnInit, OnDestroy {
       parsed = raw ? JSON.parse(raw) : {};
     } catch { /* Safari private mode or malformed JSON — use defaults */ }
     const settings = {
-      dayDuration: parsed.dayDuration ?? 60,
-      nightDuration: parsed.nightDuration ?? 30,
-      votingDuration: parsed.votingDuration ?? 30,
+      dayDuration: parsed['dayDuration'] ?? 60,
+      nightDuration: parsed['nightDuration'] ?? 30,
+      votingDuration: parsed['votingDuration'] ?? 30,
     };
     const mode = g.mode;
     let data: MafiaGameData;
     if (mode === 'Classic') {
       data = this.classicMafia.initGameData(g.players.length, settings);
     } else {
-      const customRoles = parsed.customRoles ?? undefined;
+      const customRoles = parsed['customRoles'] ?? undefined;
       data = this.extendedMafia.initGameData(g.players.length, settings, customRoles);
     }
     this.loading.set(true);
