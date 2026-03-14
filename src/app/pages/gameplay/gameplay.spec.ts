@@ -164,7 +164,7 @@ function makeComponent() {
 
   // Simulate post-ngOnInit state without calling ngOnInit (avoids setInterval/subscriptions)
   (component as any).gameId = 'game1';
-  component.myIndexVal = 0;
+  component.myIndexVal.set(0);
 
   return { component, gameService, socketService, classicMafia, extendedMafia, roleUi, nightAction };
 }
@@ -323,7 +323,7 @@ describe('GameplayComponent.submitVote', () => {
 
   it('does nothing if myIndexVal is -1 (not in game)', () => {
     const { component, gameService } = makeComponent();
-    component.myIndexVal = -1;
+    component.myIndexVal.set(-1);
     component.submitVote(1);
     expect(gameService.submitVote).not.toHaveBeenCalled();
   });
@@ -488,7 +488,7 @@ describe('GameplayComponent.applyGameUpdate — finished phase', () => {
 describe('GameplayComponent.isMyPlayerAlive', () => {
   it('returns false when the player is dead (not in alive[])', () => {
     const { component } = makeComponent();
-    component.myIndexVal = 0;
+    component.myIndexVal.set(0);
     component.currentGame.set(makeGame({ data: makeGameData({ alive: [1, 2, 3] }) }));
 
     expect(component.isMyPlayerAlive).toBe(false);
@@ -496,7 +496,7 @@ describe('GameplayComponent.isMyPlayerAlive', () => {
 
   it('returns true when the player is alive', () => {
     const { component } = makeComponent();
-    component.myIndexVal = 0;
+    component.myIndexVal.set(0);
     component.currentGame.set(makeGame({ data: makeGameData({ alive: [0, 1, 2, 3] }) }));
 
     expect(component.isMyPlayerAlive).toBe(true);

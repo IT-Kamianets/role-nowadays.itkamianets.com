@@ -163,7 +163,7 @@
                   {{ i + 1 }}
                 </div>
                 <span class="text-sm text-amber-100/80">{{ playerName(i) }}</span>
-                @if (i === myIndexVal) {
+                @if (i === myIndexVal()) {
                   <span class="ml-auto text-[10px] text-amber-400 font-bold bg-amber-700/15 px-2 py-0.5 rounded-lg">Ви</span>
                 }
               </div>
@@ -407,7 +407,7 @@
                   {{ p.index + 1 }}
                 </div>
                 <span class="text-sm text-amber-100/80 flex-1">{{ p.label }}</span>
-                @if (p.index === myIndexVal) {
+                @if (p.index === myIndexVal()) {
                   <span class="text-[10px] text-amber-400 font-bold bg-amber-700/15 px-2 py-0.5 rounded-lg">Ви</span>
                 }
               </div>

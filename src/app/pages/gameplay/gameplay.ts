@@ -45,7 +45,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   isOnline = signal(navigator.onLine);
 
-  myIndexVal = -1;
+  myIndexVal = signal(-1);
   dayChatText = '';
   nightChatText = '';
 
@@ -81,7 +81,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.gameId = this.route.snapshot.paramMap.get('id') ?? '';
-    this.myIndexVal = this.gameService.getPlayerIndex(this.gameId);
+    this.myIndexVal.set(this.gameService.getPlayerIndex(this.gameId));
 
     if (this.gameId) {
       // Initial load
@@ -192,7 +192,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     }
     if (newPhase === 'night') {
       const round = (game.data as Partial<MafiaGameData>)?.round;
-      if (round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
+      if (round === 1 && this.myIndexVal() >= 0 && !this.roleRevealShown) {
         this.roleRevealShown = true;
         this.revealAfterTransition = true;
         this.playTransitionVideo('/day-to-night.mp4');
@@ -249,8 +249,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
 
   get myRole(): string | null {
     const d = this.gameData;
-    if (!d || this.myIndexVal < 0) return null;
-    return d.roles?.[String(this.myIndexVal)] ?? null;
+    if (!d || this.myIndexVal() < 0) return null;
+    return d.roles?.[String(this.myIndexVal())] ?? null;
   }
 
   get myRoleDef() {
@@ -280,11 +280,11 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   get votingTargets() {
-    return this.alivePlayers.filter(p => p.index !== this.myIndexVal);
+    return this.alivePlayers.filter(p => p.index !== this.myIndexVal());
   }
 
   get isMyPlayerAlive(): boolean {
-    return this.alivePlayers.some(p => p.index === this.myIndexVal);
+    return this.alivePlayers.some(p => p.index === this.myIndexVal());
   }
 
   get allPlayers() {
@@ -362,7 +362,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
           this.currentGame.set(game);
           const newPhase = (game.data as Partial<MafiaGameData>)?.phase;
           const round = (game.data as Partial<MafiaGameData>)?.round;
-          if (newPhase === 'night' && round === 1 && this.myIndexVal >= 0 && !this.roleRevealShown) {
+          if (newPhase === 'night' && round === 1 && this.myIndexVal() >= 0 && !this.roleRevealShown) {
             this.roleRevealShown = true;
             this.revealAfterTransition = true;
             this.playTransitionVideo('/day-to-night.mp4');
@@ -509,12 +509,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
   }
 
   submitVote(targetIndex: number) {
-    if (this.myIndexVal < 0 || !this.isMyPlayerAlive) return;
+    if (this.myIndexVal() < 0 || !this.isMyPlayerAlive) return;
     this.hasVoted.set(true);
     this.myVoteTarget.set(targetIndex);
     this.myLog.update(l => [...l, { text: `Ви проголосували за ${this.playerName(targetIndex)}`, type: 'action' }]);
     const logEntryIndex = this.myLog().length - 1;
-    this.gameService.submitVote(this.gameId, this.myIndexVal, targetIndex).subscribe({
+    this.gameService.submitVote(this.gameId, this.myIndexVal(), targetIndex).subscribe({
       next: game => {
         if (!game || typeof game !== 'object') return;
         this.currentGame.set(game);
@@ -631,7 +631,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const mafiaTeam = new Set(['Mafia', 'Godfather', 'Consigliere', 'Roleblocker', 'Poisoner', 'Framer']);
     const isMafiaRole = this.myRole ? mafiaTeam.has(this.myRole) : false;
     return this.alivePlayers.filter(p => {
-      if (p.index === this.myIndexVal) return false;
+      if (p.index === this.myIndexVal()) return false;
       if (isMafiaRole && d && mafiaTeam.has(d.roles?.[String(p.index)] ?? '')) return false;
       return true;
     });
