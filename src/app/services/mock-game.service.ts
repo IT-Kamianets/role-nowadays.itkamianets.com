@@ -104,7 +104,7 @@ export class MockGameService {
   submitNightAction(gameId: string, field: string, target: number): Observable<Game> {
     const d = this.state.data as Record<string, any>;
     const nightActions = { ...(d['nightActions'] || {}), [field]: target };
-    const game = this.patch({ data: { ...d, nightActions } as Game['data'] });
+    const game = this.patch({ data: { ...d, nightActions } as unknown as Game['data'] });
     return of(game).pipe(delay(200));
   }
 
@@ -112,7 +112,7 @@ export class MockGameService {
     const data = this.state.data as Record<string, any>;
     const msg: Message = { sender: this.getPlayerIndex(gameId), text, type } as unknown as Message;
     const messages = [...(data['messages'] || []), msg];
-    this.patch({ data: { ...data, messages } as Record<string, any> });
+    this.patch({ data: { ...data, messages } as unknown as Game['data'] });
     return of(msg).pipe(delay(100));
   }
 
