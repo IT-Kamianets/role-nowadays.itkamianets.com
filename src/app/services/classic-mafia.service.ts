@@ -45,6 +45,7 @@ export interface MafiaGameData {
   poisoned?: { player: number; round: number }[];
   arsonistDoused?: number[];
   executionerTargets?: Record<string, number>;
+  tied?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

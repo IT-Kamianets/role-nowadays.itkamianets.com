@@ -156,7 +156,7 @@ function resolveTie(game) {
 
 // ── Server ────────────────────────────────────────────────────────────
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = req.url.split('?')[0];
 
   // Статичні файли Angular (не API)
@@ -385,4 +385,12 @@ http.createServer(async (req, res) => {
   console.log(`\n✓ Server: http://localhost:${PORT}`);
   console.log(`  API:    http://localhost:${PORT}/api/rnd/games`);
   console.log(`  App:    http://localhost:${PORT}/\n`);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[fatal] unhandledRejection', reason);
+});
+process.on('SIGTERM', () => {
+  console.log('[shutdown] SIGTERM received, closing gracefully');
+  server.close(() => process.exit(0));
 });

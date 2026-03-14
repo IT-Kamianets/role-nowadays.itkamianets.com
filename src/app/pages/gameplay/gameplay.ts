@@ -528,28 +528,41 @@ export class GameplayComponent implements OnInit, OnDestroy {
     });
   }
 
+  private sendingDayMessage = false;
+  private sendingNightMessage = false;
+
   sendDayMessage() {
     const text = this.dayChatText.trim();
-    if (!text) return;
+    if (!text || this.sendingDayMessage) return;
+    this.sendingDayMessage = true;
     this.dayChatText = '';
     this.gameService.sendMessage(this.gameId, text, 'day').subscribe({
-      next: msg => { if (msg) this.allMessages.update(msgs => [...msgs, msg]); },
+      next: msg => {
+        if (msg) this.allMessages.update(msgs => [...msgs, msg]);
+        this.sendingDayMessage = false;
+      },
       error: () => {
         this.dayChatText = text;
         this.errorMsg.set('Повідомлення не відправлено. Спробуйте знову.');
+        this.sendingDayMessage = false;
       },
     });
   }
 
   sendNightMessage() {
     const text = this.nightChatText.trim();
-    if (!text) return;
+    if (!text || this.sendingNightMessage) return;
+    this.sendingNightMessage = true;
     this.nightChatText = '';
     this.gameService.sendMessage(this.gameId, text, 'night').subscribe({
-      next: msg => { if (msg) this.allMessages.update(msgs => [...msgs, msg]); },
+      next: msg => {
+        if (msg) this.allMessages.update(msgs => [...msgs, msg]);
+        this.sendingNightMessage = false;
+      },
       error: () => {
         this.nightChatText = text;
         this.errorMsg.set('Повідомлення не відправлено. Спробуйте знову.');
+        this.sendingNightMessage = false;
       },
     });
   }
