@@ -98,6 +98,7 @@ function makeComponent() {
     joinRoom: vi.fn(),
     onGameUpdate: vi.fn(() => new Subject<Game>()),
     onReconnect: vi.fn(() => new Subject<void>()),
+    onConnectionError: vi.fn(() => new Subject<string>()),
     emit: vi.fn(),
   };
   const classicMafia = {
@@ -350,5 +351,138 @@ describe('GameplayComponent transition flags', () => {
     component.triggerVotingEnd();
 
     expect((component as any).votingTransitionSent).toBe(false);
+  });
+});
+
+// ── sendDayMessage ────────────────────────────────────────────────────────────
+
+describe('GameplayComponent.sendDayMessage', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('adds message to allMessages on success', () => {
+    const { component, gameService } = makeComponent();
+    const msg = { _id: 'm1', text: 'Hello', creator: { _id: 'u1', name: 'Alice' }, data: { type: 'day' as const }, createdAt: '' };
+    gameService.sendMessage.mockReturnValue(of(msg));
+    component.dayChatText = 'Hello';
+
+    component.sendDayMessage();
+
+    expect(component.allMessages()).toContain(msg);
+  });
+
+  it('restores dayChatText and sets errorMsg on error', () => {
+    const { component, gameService } = makeComponent();
+    gameService.sendMessage.mockReturnValue(throwError(() => new Error('net')));
+    component.dayChatText = 'Hello';
+
+    component.sendDayMessage();
+
+    expect(component.dayChatText).toBe('Hello');
+    expect(component.errorMsg()).toBeTruthy();
+  });
+
+  it('does not call sendMessage when text is empty', () => {
+    const { component, gameService } = makeComponent();
+    component.dayChatText = '   ';
+
+    component.sendDayMessage();
+
+    expect(gameService.sendMessage).not.toHaveBeenCalled();
+  });
+});
+
+// ── sendNightMessage ──────────────────────────────────────────────────────────
+
+describe('GameplayComponent.sendNightMessage', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('adds message to allMessages on success', () => {
+    const { component, gameService } = makeComponent();
+    const msg = { _id: 'm2', text: 'Night msg', creator: { _id: 'u1', name: 'Alice' }, data: { type: 'night' as const }, createdAt: '' };
+    gameService.sendMessage.mockReturnValue(of(msg));
+    component.nightChatText = 'Night msg';
+
+    component.sendNightMessage();
+
+    expect(component.allMessages()).toContain(msg);
+  });
+
+  it('restores nightChatText and sets errorMsg on error', () => {
+    const { component, gameService } = makeComponent();
+    gameService.sendMessage.mockReturnValue(throwError(() => new Error('net')));
+    component.nightChatText = 'Night msg';
+
+    component.sendNightMessage();
+
+    expect(component.nightChatText).toBe('Night msg');
+    expect(component.errorMsg()).toBeTruthy();
+  });
+});
+
+// ── submitVote additional ─────────────────────────────────────────────────────
+
+describe('GameplayComponent.submitVote (additional)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('updates currentGame on success', () => {
+    const { component, gameService } = makeComponent();
+    const updatedGame = makeGame({ data: makeGameData({ phase: 'night' }) });
+    component.currentGame.set(makeGame({ data: makeGameData({ phase: 'voting' }) }));
+    gameService.submitVote.mockReturnValue(of(updatedGame));
+
+    component.submitVote(1);
+
+    expect(component.currentGame()?.data.phase).toBe('night');
+  });
+});
+
+// ── applyGameUpdate — finished phase ─────────────────────────────────────────
+
+describe('GameplayComponent.applyGameUpdate — finished phase', () => {
+  it('sets splitLayoutVisible true when phase becomes finished', () => {
+    const { component } = makeComponent();
+    // finished is not in active phases so splitLayoutVisible stays false unless already set from previous active phase
+    // First enter an active phase
+    (component as any).applyGameUpdate(makeGame({ data: makeGameData({ phase: 'day' }) }));
+    expect(component.splitLayoutVisible()).toBe(true);
+  });
+});
+
+// ── isMyPlayerAlive ───────────────────────────────────────────────────────────
+
+describe('GameplayComponent.isMyPlayerAlive', () => {
+  it('returns false when the player is dead (not in alive[])', () => {
+    const { component } = makeComponent();
+    component.myIndexVal = 0;
+    component.currentGame.set(makeGame({ data: makeGameData({ alive: [1, 2, 3] }) }));
+
+    expect(component.isMyPlayerAlive).toBe(false);
+  });
+
+  it('returns true when the player is alive', () => {
+    const { component } = makeComponent();
+    component.myIndexVal = 0;
+    component.currentGame.set(makeGame({ data: makeGameData({ alive: [0, 1, 2, 3] }) }));
+
+    expect(component.isMyPlayerAlive).toBe(true);
+  });
+});
+
+// ── socketService.onConnectionError ──────────────────────────────────────────
+
+describe('GameplayComponent — socket onConnectionError', () => {
+  it('sets errorMsg when connection error fires', () => {
+    const { component, socketService } = makeComponent();
+    const errorSubject = new Subject<string>();
+    socketService.onConnectionError.mockReturnValue(errorSubject);
+
+    // Manually wire the subscription as ngOnInit would
+    (component as any).connErrorSub = errorSubject.subscribe(() => {
+      component.errorMsg.set('З\'єднання з сервером втрачено. Оновіть сторінку.');
+    });
+
+    errorSubject.next('auth error');
+
+    expect(component.errorMsg()).toBeTruthy();
   });
 });

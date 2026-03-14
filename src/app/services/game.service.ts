@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { Game, GameMode } from '../models/game.model';
+import { Message } from '../models/message.model';
 import { environment } from '../../environments/environment';
 import { SocketService } from './socket.service';
 
@@ -95,15 +96,15 @@ export class GameService {
     return this.http.post<Game>(`${BASE}/vote`, { _id: gameId, voterIndex, targetIndex });
   }
 
-  sendMessage(gameId: string, text: string, type: 'day' | 'night'): Observable<any> {
+  sendMessage(gameId: string, text: string, type: 'day' | 'night'): Observable<Message> {
     return this.http
-      .post<any>(`${BASE}/message/create`, { _id: gameId, text, data: { type } })
-      .pipe(catchError(() => of(null)));
+      .post<Message>(`${BASE}/message/create`, { _id: gameId, text, data: { type } })
+      .pipe(catchError(() => of(null as unknown as Message)));
   }
 
-  getMessages(gameId: string): Observable<any[]> {
+  getMessages(gameId: string): Observable<Message[]> {
     return this.http
-      .post<any[]>(`${BASE}/message/get`, { _id: gameId })
+      .post<Message[]>(`${BASE}/message/get`, { _id: gameId })
       .pipe(catchError(() => of([])));
   }
 

@@ -10,6 +10,7 @@ import { ClassicMafiaService, MafiaGameData } from '../../services/classic-mafia
 import { ExtendedMafiaService } from '../../services/extended-mafia.service';
 import { RoleConstantsService } from '../../services/role-constants.service';
 import { Game } from '../../models/game.model';
+import { Message } from '../../models/message.model';
 import { GameLogComponent } from '../../components/game-log/game-log';
 import { calcSecondsLeft, calcLobbySecondsLeft } from '../../utils/phase-timer';
 
@@ -29,7 +30,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
   votingSecondsLeft = signal(30);
   loading = signal(false);
   errorMsg = signal<string | null>(null);
-  allMessages = signal<any[]>([]);
+  allMessages = signal<Message[]>([]);
   showRoleReveal = signal(false);
   roleRevealed = signal(false);
   cardFlipped = signal(false);
