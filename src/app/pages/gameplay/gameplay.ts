@@ -8,7 +8,8 @@ import { GameService } from '../../services/game.service';
 import { SocketService } from '../../services/socket.service';
 import { ClassicMafiaService, MafiaGameData } from '../../services/classic-mafia.service';
 import { ExtendedMafiaService } from '../../services/extended-mafia.service';
-import { RoleConstantsService } from '../../services/role-constants.service';
+import { RoleUiService } from '../../services/role-ui.service';
+import { NightActionService } from '../../services/night-action.service';
 import { Game } from '../../models/game.model';
 import { Message } from '../../models/message.model';
 import { GameLogComponent } from '../../components/game-log/game-log';
@@ -74,7 +75,8 @@ export class GameplayComponent implements OnInit, OnDestroy {
     private extendedMafia: ExtendedMafiaService,
     private route: ActivatedRoute,
     private router: Router,
-    private roleConstants: RoleConstantsService,
+    readonly roleUi: RoleUiService,
+    readonly nightAction: NightActionService,
   ) {}
 
   ngOnInit() {
@@ -381,19 +383,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
   submitNightAction(target: number) {
     const role = this.myRole;
     if (!role) return;
-    const roleToField: Record<string, string> = {
-      Mafia: 'mafiaTarget', Godfather: 'mafiaTarget',
-      Doctor: 'doctorTarget', Detective: 'detectiveTarget',
-      Bodyguard: 'bodyguardTarget', Sheriff: 'sheriffTarget',
-      Tracker: 'trackerTarget', Watcher: 'watcherTarget',
-      Consigliere: 'consigliereTarget', Roleblocker: 'roleblockerTarget',
-      Poisoner: 'poisonerTarget', Framer: 'framerTarget',
-      SerialKiller: 'serialKillerTarget', Arsonist: 'arsonistTarget', Priest: 'priestTarget',
-    };
-    const field = roleToField[role];
+    const field = this.nightAction.roleToField(role);
     if (!field) return;
     // Add personal log entry (optimistic)
-    const actionText = this.getNightActionLogText(target, role);
+    const actionText = this.nightAction.getNightActionLogText(target, role, this.playerName(target));
     this.myLog.update(l => [...l, { text: actionText, type: 'action' }]);
     const logLengthBeforeAction = this.myLog().length - 1;
     this.gameService.submitNightAction(this.gameId, field, target).subscribe({
@@ -603,92 +596,34 @@ export class GameplayComponent implements OnInit, OnDestroy {
     }, 600);
   }
 
-  // ── Night action helpers ──────────────────────────────────────────────
+  // ── Night action helpers (delegated to NightActionService) ───────────
 
   isSleepingRole(role: string | null): boolean {
-    const sleepers = ['Villager', 'Mayor', 'Survivor', 'Jester', 'Executioner'];
-    return !!role && sleepers.includes(role);
+    return this.nightAction.isSleepingRole(role);
   }
 
   hasNightAction(role: string | null): boolean {
-    const actors = ['Mafia', 'Godfather', 'Doctor', 'Detective', 'Bodyguard', 'Sheriff',
-      'Tracker', 'Watcher', 'Consigliere', 'Roleblocker', 'Poisoner', 'Framer',
-      'SerialKiller', 'Arsonist', 'Priest'];
-    return !!role && actors.includes(role);
+    return this.nightAction.hasNightAction(role);
   }
 
   isMafiaTeamMember(role: string | null): boolean {
-    return !!role && this.extendedMafia.ROLE_DEFS[role]?.team === 'mafia';
+    return this.nightAction.isMafiaTeamMember(role);
   }
 
   get hasSubmittedNightAction(): boolean {
     const d = this.gameData;
-    const role = this.myRole;
-    if (!d || !role) return false;
-    const n = d.night;
-    switch (role) {
-      case 'Mafia':
-      case 'Godfather':    return n.mafiaTarget !== null;
-      case 'Doctor':       return n.doctorTarget !== null;
-      case 'Detective':    return n.detectiveTarget !== null;
-      case 'Bodyguard':    return n.bodyguardTarget !== null && n.bodyguardTarget !== undefined;
-      case 'Sheriff':      return n.sheriffTarget !== null && n.sheriffTarget !== undefined;
-      case 'Tracker':      return n.trackerTarget !== null && n.trackerTarget !== undefined;
-      case 'Watcher':      return n.watcherTarget !== null && n.watcherTarget !== undefined;
-      case 'Consigliere':  return n.consigliereTarget !== null && n.consigliereTarget !== undefined;
-      case 'Roleblocker':  return n.roleblockerTarget !== null && n.roleblockerTarget !== undefined;
-      case 'Poisoner':     return n.poisonerTarget !== null && n.poisonerTarget !== undefined;
-      case 'Framer':       return n.framerTarget !== null && n.framerTarget !== undefined;
-      case 'SerialKiller': return n.serialKillerTarget !== null && n.serialKillerTarget !== undefined;
-      case 'Arsonist':     return (n.arsonistTarget !== null && n.arsonistTarget !== undefined) || !!n.arsonistIgnite;
-      case 'Priest':       return n.priestTarget !== null && n.priestTarget !== undefined;
-      default: return true;
-    }
+    if (!d) return false;
+    return this.nightAction.hasSubmittedNightAction(this.myRole, d.night);
   }
 
   get myNightTarget(): number | null {
     const d = this.gameData;
-    const role = this.myRole;
-    if (!d || !role) return null;
-    const n = d.night;
-    switch (role) {
-      case 'Mafia':
-      case 'Godfather':    return n.mafiaTarget;
-      case 'Doctor':       return n.doctorTarget;
-      case 'Detective':    return n.detectiveTarget;
-      case 'Bodyguard':    return n.bodyguardTarget ?? null;
-      case 'Sheriff':      return n.sheriffTarget ?? null;
-      case 'Tracker':      return n.trackerTarget ?? null;
-      case 'Watcher':      return n.watcherTarget ?? null;
-      case 'Consigliere':  return n.consigliereTarget ?? null;
-      case 'Roleblocker':  return n.roleblockerTarget ?? null;
-      case 'Poisoner':     return n.poisonerTarget ?? null;
-      case 'Framer':       return n.framerTarget ?? null;
-      case 'SerialKiller': return n.serialKillerTarget ?? null;
-      case 'Arsonist':     return n.arsonistTarget ?? null;
-      case 'Priest':       return n.priestTarget ?? null;
-      default: return null;
-    }
+    if (!d) return null;
+    return this.nightAction.myNightTarget(this.myRole, d.night);
   }
 
   get roleNightActionLabel(): string {
-    const map: Record<string, string> = {
-      Mafia:       '🔪 Оберіть жертву',
-      Godfather:   '🎭 Оберіть жертву (голова мафії)',
-      Doctor:      '💊 Оберіть кого захистити',
-      Detective:   '🔍 Оберіть кого перевірити',
-      Bodyguard:   '🛡️ Оберіть кого охороняти',
-      Sheriff:     '⭐ Оберіть кого перевірити',
-      Tracker:     '👁️ Оберіть кого відстежити',
-      Watcher:     '🔭 Оберіть за ким стежити',
-      Consigliere: '📖 Оберіть чию роль дізнатись',
-      Roleblocker: '🚫 Оберіть кого заблокувати',
-      Poisoner:    '☠️ Оберіть кого отруїти',
-      Framer:      '🖼️ Оберіть кого підставити',
-      SerialKiller:'🗡️ Оберіть жертву',
-      Priest:      '✝️ Оберіть кого освятити цієї ночі',
-    };
-    return map[this.myRole ?? ''] ?? '';
+    return this.nightAction.roleNightActionLabel(this.myRole);
   }
 
   get nightTargets() {
@@ -697,13 +632,11 @@ export class GameplayComponent implements OnInit, OnDestroy {
     const isMafiaRole = this.myRole ? mafiaTeam.has(this.myRole) : false;
     return this.alivePlayers.filter(p => {
       if (p.index === this.myIndexVal) return false;
-      // Mafia members cannot target own team
       if (isMafiaRole && d && mafiaTeam.has(d.roles?.[String(p.index)] ?? '')) return false;
       return true;
     });
   }
 
-  // Doctor and Priest can target themselves
   get currentNightTargets() {
     const canSelf = this.myRole === 'Doctor' || this.myRole === 'Priest';
     return canSelf ? this.alivePlayers : this.nightTargets;
@@ -713,199 +646,31 @@ export class GameplayComponent implements OnInit, OnDestroy {
     return this.gameService.isCreator(this.gameId);
   }
 
-  private getNightActionLogText(target: number, role: string): string {
-    const name = this.playerName(target);
-    const map: Record<string, string> = {
-      Mafia:        `Ви обрали жертву: ${name}`,
-      Godfather:    `Ви обрали жертву: ${name}`,
-      Doctor:       `Ви захистили: ${name}`,
-      Detective:    `Ви перевіряєте: ${name}`,
-      Bodyguard:    `Ви охороняєте: ${name}`,
-      Sheriff:      `Ви перевіряєте: ${name}`,
-      Tracker:      `Ви відстежуєте: ${name}`,
-      Watcher:      `Ви стежите за: ${name}`,
-      Consigliere:  `Ви розвідуєте роль: ${name}`,
-      Roleblocker:  `Ви блокуєте: ${name}`,
-      Poisoner:     `Ви отруюєте: ${name}`,
-      Framer:       `Ви підставляєте: ${name}`,
-      SerialKiller: `Ви обрали жертву: ${name}`,
-      Priest:       `Ви освятили: ${name}`,
-    };
-    return map[role] ?? `Нічна дія → ${name}`;
-  }
+  // ── UI helpers (delegated to RoleUiService) ───────────────────────────
 
-  // ── UI helpers ────────────────────────────────────────────────────────
+  roleDef(role: string) { return this.roleUi.roleDef(role); }
+  roleTeamBadgeClass(role: string): string { return this.roleUi.roleTeamBadgeClass(role); }
+  roleTeamTextClass(role: string): string { return this.roleUi.roleTeamTextClass(role); }
+  roleIcon(role: string): string { return this.roleUi.roleIcon(role); }
+  roleNameUk(role: string): string { return this.roleUi.roleNameUk(role); }
+  revealCardBg(role: string): string { return this.roleUi.revealCardBg(role); }
+  revealRoleIcon(role: string): string { return this.roleUi.roleIcon(role); }
+  revealGlowColor(role: string): string { return this.roleUi.revealGlowColor(role); }
+  revealBadge(role: string): string { return this.roleUi.revealBadge(role); }
+  roleCardImage(role: string): string { return this.roleUi.roleCardImage(role); }
+  teamLabel(team: string): string { return this.roleUi.teamLabel(team); }
+  teamAccent(team: string): string { return this.roleUi.teamAccent(team); }
+  teamBadge(team: string): string { return this.roleUi.teamBadge(team); }
+  roleCardBg(team: string): string { return this.roleUi.roleCardBg(team); }
 
-  roleDef(role: string) {
-    return this.extendedMafia.ROLE_DEFS[role] ?? this.classicMafia.ROLE_DEFS[role] ?? null;
-  }
-
-  roleTeamBadgeClass(role: string): string {
-    const team = this.roleDef(role)?.team;
-    if (team === 'mafia') return 'bg-red-700';
-    if (team === 'neutral') return 'bg-purple-700';
-    return 'bg-amber-700';
-  }
-
-  roleTeamTextClass(role: string): string {
-    const team = this.roleDef(role)?.team;
-    if (team === 'mafia') return 'text-red-400';
-    if (team === 'neutral') return 'text-purple-400';
-    return 'text-amber-400';
-  }
-
-  roleIcon(role: string): string {
-    return this.roleConstants.icon(role);
-  }
-
-  revealCardBg(role: string): string {
-    const map: Record<string, string> = {
-      Mafia:       'bg-gradient-to-br from-red-950 to-rose-950 border-red-600/40',
-      Godfather:   'bg-gradient-to-br from-red-950 to-red-950 border-red-800/60',
-      Consigliere: 'bg-gradient-to-br from-orange-950 to-red-950 border-orange-600/40',
-      Roleblocker: 'bg-gradient-to-br from-orange-950 to-amber-950 border-orange-500/40',
-      Poisoner:    'bg-gradient-to-br from-violet-950 to-purple-950 border-violet-600/40',
-      Framer:      'bg-gradient-to-br from-rose-950 to-pink-950 border-rose-600/40',
-      Detective:   'bg-gradient-to-br from-blue-950 to-indigo-950 border-blue-600/40',
-      Doctor:      'bg-gradient-to-br from-green-950 to-emerald-950 border-green-600/40',
-      Bodyguard:   'bg-gradient-to-br from-teal-950 to-cyan-950 border-teal-600/40',
-      Sheriff:     'bg-gradient-to-br from-yellow-950 to-amber-950 border-yellow-600/40',
-      Tracker:     'bg-gradient-to-br from-cyan-950 to-sky-950 border-cyan-600/40',
-      Watcher:     'bg-gradient-to-br from-purple-950 to-violet-950 border-purple-600/40',
-      Priest:      'bg-gradient-to-br from-slate-800 to-slate-900 border-white/20',
-      Mayor:       'bg-gradient-to-br from-amber-950 to-yellow-950 border-amber-600/40',
-      Villager:    'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40',
-      Jester:      'bg-gradient-to-br from-pink-950 to-fuchsia-950 border-pink-600/40',
-      Executioner: 'bg-gradient-to-br from-indigo-950 to-blue-950 border-indigo-600/40',
-      Survivor:    'bg-gradient-to-br from-lime-950 to-green-950 border-lime-600/40',
-      SerialKiller:'bg-gradient-to-br from-rose-950 to-red-950 border-rose-800/60',
-      Arsonist:    'bg-gradient-to-br from-orange-950 to-red-950 border-orange-500/40',
-    };
-    return map[role] ?? 'bg-gradient-to-br from-slate-900 to-slate-950 border-slate-600/40';
-  }
-
-  revealRoleIcon(role: string): string {
-    return this.roleIcon(role);
-  }
-
-  revealGlowColor(role: string): string {
-    const map: Record<string, string> = {
-      Mafia: 'bg-red-500', Godfather: 'bg-red-700', Consigliere: 'bg-orange-500',
-      Roleblocker: 'bg-orange-400', Poisoner: 'bg-violet-500', Framer: 'bg-rose-500',
-      Detective: 'bg-blue-500', Doctor: 'bg-green-500', Bodyguard: 'bg-teal-500',
-      Sheriff: 'bg-yellow-500', Tracker: 'bg-cyan-500', Watcher: 'bg-purple-500',
-      Priest: 'bg-white', Mayor: 'bg-amber-500', Villager: 'bg-slate-400',
-      Jester: 'bg-pink-500', Executioner: 'bg-indigo-500', Survivor: 'bg-lime-500',
-      SerialKiller: 'bg-rose-700', Arsonist: 'bg-orange-500',
-    };
-    return map[role] ?? 'bg-white';
-  }
-
-  revealBadge(role: string): string {
-    const team = this.roleDef(role)?.team;
-    if (team === 'mafia')   return 'bg-red-500/20 text-red-300 border-red-500/40';
-    if (team === 'neutral') return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
-    return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
-  }
-
-  roleCardImage(role: string): string {
-    const map: Record<string, string> = {
-      Villager:    '/card-villager.jpg',
-      Detective:   '/card-detective.jpg',
-      Doctor:      '/card-doctor.jpg',
-      Bodyguard:   '/card-bodyguard.jpg',
-      Sheriff:     '/card-sheriff.jpg',
-      Tracker:     '/card-tracker.jpg',
-      Watcher:     '/card-watcher.jpg',
-      Priest:      '/card-priest.jpg',
-      Mayor:       '/card-mayor.jpg',
-      Mafia:       '/card-mafia.jpg',
-      Godfather:   '/card-godfather.jpg',
-      Consigliere: '/card-consigliere.jpg',
-      Roleblocker: '/card-roleblocker.jpg',
-      Poisoner:    '/card-poisoner.jpg',
-      Framer:      '/card-framer.jpg',
-      Jester:      '/card-jester.jpg',
-      Executioner: '/card-executioner.jpg',
-      Survivor:    '/card-survivor.jpg',
-      SerialKiller: '/card-serialkiller.jpg',
-      Arsonist:    '/card-arsonist.jpg',
-    };
-    return map[role] ?? '/card-back.jpg';
-  }
-
-  // ── Role name localization ────────────────────────────────────────────
-
-  roleNameUk(role: string): string {
-    return this.roleConstants.nameUk(role);
-  }
-
-  // ── Winner helpers ────────────────────────────────────────────────────
-
-  winnerBannerClass(): string {
-    const w = this.gameData?.winner;
-    switch (w) {
-      case 'mafia':        return 'bg-red-950 border-red-800/50';
-      case 'jester':       return 'bg-pink-950 border-pink-800/50';
-      case 'executioner':  return 'bg-indigo-950 border-indigo-800/50';
-      case 'serialkiller': return 'bg-rose-950 border-rose-800/50';
-      case 'survivor':     return 'bg-lime-950 border-lime-800/50';
-      default:             return 'bg-[#1a110a] border-amber-700/40';
-    }
-  }
-
-  winnerIcon(): string {
-    const map: Record<string, string> = {
-      village: '🛡️', mafia: '🔪', jester: '🤡',
-      executioner: '⚖️', serialkiller: '🗡️', survivor: '🏕️',
-    };
-    return map[this.gameData?.winner ?? ''] ?? '🏆';
-  }
-
-  winnerLabel(): string {
-    const map: Record<string, string> = {
-      village: 'Місто перемогло!', mafia: 'Мафія перемогла!',
-      jester: 'Блазень переміг!', executioner: 'Кат переміг!',
-      serialkiller: 'Серійний вбивця переміг!', survivor: 'Вижилець переміг!',
-    };
-    return map[this.gameData?.winner ?? ''] ?? 'Гра завершена';
-  }
-
-  winnerDescription(): string {
-    const map: Record<string, string> = {
-      village: 'Всіх мафіозів знешкоджено.',
-      mafia: 'Мафія захопила місто.',
-      jester: 'Блазень домігся свого і був виключений.',
-      executioner: 'Ціль ката була усунена голосуванням.',
-      serialkiller: 'Серійний вбивця залишився єдиним.',
-      survivor: 'Вижилець дожив до кінця гри.',
-    };
-    return map[this.gameData?.winner ?? ''] ?? '';
-  }
+  winnerBannerClass(): string { return this.roleUi.winnerBannerClass(this.gameData?.winner); }
+  winnerIcon(): string { return this.roleUi.winnerIcon(this.gameData?.winner); }
+  winnerLabel(): string { return this.roleUi.winnerLabel(this.gameData?.winner); }
+  winnerDescription(): string { return this.roleUi.winnerDescription(this.gameData?.winner); }
 
   formatLobbyTime(seconds: number): string {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
-  }
-
-  teamLabel(team: string): string {
-    return team === 'mafia' ? 'Мафія' : 'Місто';
-  }
-
-  teamAccent(team: string): string {
-    return team === 'mafia' ? 'text-red-400' : 'text-amber-400';
-  }
-
-  teamBadge(team: string): string {
-    return team === 'mafia'
-      ? 'bg-red-500/15 text-red-300 border-red-500/30'
-      : 'bg-amber-700/15 text-amber-300 border-amber-600/30';
-  }
-
-  roleCardBg(team: string): string {
-    return team === 'mafia'
-      ? 'bg-[#1a0505] border border-red-900/50'
-      : 'bg-[#1a110a] border border-[#2d1f10]';
   }
 }

@@ -115,7 +115,41 @@ function makeComponent() {
   };
   const route = { snapshot: { paramMap: { get: vi.fn(() => 'game1') } } };
   const router = { navigate: vi.fn() };
-  const roleConstants = {};
+  const roleUi = {
+    roleDef: vi.fn(() => null),
+    roleTeamBadgeClass: vi.fn(() => ''),
+    roleTeamTextClass: vi.fn(() => ''),
+    roleIcon: vi.fn(() => ''),
+    roleNameUk: vi.fn(() => ''),
+    revealCardBg: vi.fn(() => ''),
+    revealGlowColor: vi.fn(() => ''),
+    revealBadge: vi.fn(() => ''),
+    roleCardImage: vi.fn(() => ''),
+    winnerBannerClass: vi.fn(() => ''),
+    winnerIcon: vi.fn(() => ''),
+    winnerLabel: vi.fn(() => ''),
+    winnerDescription: vi.fn(() => ''),
+    teamLabel: vi.fn(() => ''),
+    teamAccent: vi.fn(() => ''),
+    teamBadge: vi.fn(() => ''),
+    roleCardBg: vi.fn(() => ''),
+  };
+  const nightAction = {
+    isSleepingRole: vi.fn(() => false),
+    hasNightAction: vi.fn(() => true),
+    isMafiaTeamMember: vi.fn(() => false),
+    roleNightActionLabel: vi.fn(() => ''),
+    hasSubmittedNightAction: vi.fn(() => false),
+    myNightTarget: vi.fn(() => null),
+    getNightActionLogText: vi.fn((t: number, role: string, name: string) => `${role} → ${name}`),
+    roleToField: vi.fn((role: string) => {
+      const map: Record<string, string> = {
+        Mafia: 'mafiaTarget', Godfather: 'mafiaTarget',
+        Doctor: 'doctorTarget', Detective: 'detectiveTarget',
+      };
+      return map[role];
+    }),
+  };
 
   const component = new GameplayComponent(
     gameService as any,
@@ -124,14 +158,15 @@ function makeComponent() {
     extendedMafia as any,
     route as any,
     router as any,
-    roleConstants as any,
+    roleUi as any,
+    nightAction as any,
   );
 
   // Simulate post-ngOnInit state without calling ngOnInit (avoids setInterval/subscriptions)
   (component as any).gameId = 'game1';
   component.myIndexVal = 0;
 
-  return { component, gameService, socketService, classicMafia, extendedMafia };
+  return { component, gameService, socketService, classicMafia, extendedMafia, roleUi, nightAction };
 }
 
 // ── applyGameUpdate ───────────────────────────────────────────────────────────
