@@ -111,6 +111,6 @@ export class TrueFaceService {
   }
 
   private deepClone<T>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
+    return structuredClone(obj);
   }
 }

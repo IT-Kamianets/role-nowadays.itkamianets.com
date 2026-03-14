@@ -26,7 +26,7 @@ const INITIAL_GAME: Game = {
 
 @Injectable({ providedIn: 'root' })
 export class MockGameService {
-  private state: Game = JSON.parse(JSON.stringify(INITIAL_GAME));
+  private state: Game = structuredClone(INITIAL_GAME);
 
   constructor() {
     localStorage.setItem('token', 'mock-token');
