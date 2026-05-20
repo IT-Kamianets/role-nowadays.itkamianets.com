@@ -1,0 +1,55 @@
+@if (variant === 'night') {
+  <div>
+    <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-red-400/70 mb-3">🔪 Чат мафії</p>
+    <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden">
+      <div class="max-h-40 overflow-y-auto p-3 space-y-2 min-h-[40px]">
+        @for (msg of messages; track $index) {
+          <div class="text-xs">
+            <span class="font-bold text-red-400">{{ msg.creator.name }}</span>
+            <span class="text-amber-100/60 ml-1">{{ msg.text }}</span>
+          </div>
+        }
+        @if (messages.length === 0) {
+          <p class="text-xs text-amber-100/20 text-center">Порожньо</p>
+        }
+      </div>
+      <div class="border-t border-[#2d1f10] flex">
+        <input [ngModel]="text" (ngModelChange)="onTextChange($event)"
+          (keyup.enter)="onSend()"
+          placeholder="Повідомлення мафії..."
+          class="flex-1 bg-transparent px-3 py-2.5 text-sm text-amber-100 placeholder-amber-100/20 outline-none" />
+        <button (click)="onSend()"
+          class="bg-red-700 rounded-xl px-4 my-1.5 mr-1.5 font-black text-white text-sm transition-colors">
+          →
+        </button>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div>
+    <p class="text-[10px] uppercase tracking-[0.25em] font-bold text-amber-100/30 mb-3">Чат · День</p>
+    <div class="bg-[#1a110a] border border-[#2d1f10] rounded-2xl overflow-hidden">
+      <div class="max-h-48 overflow-y-auto p-3 space-y-2 min-h-[48px]">
+        @for (msg of messages; track $index) {
+          <div class="text-xs">
+            <span class="font-bold text-amber-400">{{ msg.creator.name }}</span>
+            <span class="text-amber-100/60 ml-1">{{ msg.text }}</span>
+          </div>
+        }
+        @if (messages.length === 0) {
+          <p class="text-xs text-amber-100/20 text-center">Немає повідомлень</p>
+        }
+      </div>
+      <div class="border-t border-[#2d1f10] flex">
+        <input [ngModel]="text" (ngModelChange)="onTextChange($event)"
+          (keyup.enter)="onSend()"
+          placeholder="Повідомлення..."
+          class="flex-1 bg-transparent px-3 py-2.5 text-sm text-amber-100 placeholder-amber-100/20 outline-none" />
+        <button (click)="onSend()"
+          class="bg-amber-700 rounded-xl px-4 my-1.5 mr-1.5 font-black text-amber-50 text-sm transition-colors">
+          →
+        </button>
+      </div>
+    </div>
+  </div>
+}

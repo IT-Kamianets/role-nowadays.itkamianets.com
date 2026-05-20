@@ -249,12 +249,20 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   createGame() {
-    if (!this.nickname()) { this.showModal.set(true); return; }
+    // Token may have been cleared by the auth interceptor on a 401 while the
+    // nickname signal still holds a stale value — re-check auth, not just nickname.
+    if (!this.nickname() || !this.gameService.isAuthenticated()) {
+      this.openNicknameModal();
+      return;
+    }
     this.router.navigate(['/create']);
   }
 
   joinGame(game: Game) {
-    if (!this.nickname()) { this.showModal.set(true); return; }
+    if (!this.nickname() || !this.gameService.isAuthenticated()) {
+      this.openNicknameModal();
+      return;
+    }
     this.gameService.joinGame(game._id).subscribe({
       next: result => {
         if (result && typeof result === 'object' && '_id' in result) {

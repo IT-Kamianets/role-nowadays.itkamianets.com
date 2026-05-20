@@ -13,12 +13,17 @@ import { NightActionService } from '../../services/night-action.service';
 import { Game } from '../../models/game.model';
 import { Message } from '../../models/message.model';
 import { GameLogComponent } from '../../components/game-log/game-log';
+import { RoleRevealComponent, TransitionRequest } from '../../components/role-reveal/role-reveal';
+import { RoleInfoCardComponent } from '../../components/role-info-card/role-info-card';
+import { GameChatComponent } from '../../components/game-chat/game-chat';
+import { VotingPanelComponent } from '../../components/voting-panel/voting-panel';
+import { NightActionPanelComponent } from '../../components/night-action-panel/night-action-panel';
 import { calcSecondsLeft, calcLobbySecondsLeft } from '../../utils/phase-timer';
 
 @Component({
   selector: 'app-gameplay',
   standalone: true,
-  imports: [CommonModule, FormsModule, GameLogComponent],
+  imports: [CommonModule, FormsModule, GameLogComponent, RoleRevealComponent, RoleInfoCardComponent, GameChatComponent, VotingPanelComponent, NightActionPanelComponent],
   templateUrl: './gameplay.html',
 })
 export class GameplayComponent implements OnInit, OnDestroy {
@@ -32,13 +37,10 @@ export class GameplayComponent implements OnInit, OnDestroy {
   loading = signal(false);
   errorMsg = signal<string | null>(null);
   allMessages = signal<Message[]>([]);
-  showRoleReveal = signal(false);
-  roleRevealed = signal(false);
-  cardFlipped = signal(false);
   splitLayoutVisible = signal(false);
   phaseAnimKey = signal(0);
-  transitionVideo = signal<string | null>(null);
-  roleCardHidden = signal(false);
+  pendingTransition = signal<TransitionRequest | null>(null);
+  revealActive = signal(false);
 
   myLog = signal<{ text: string; type: 'event' | 'action' }[]>([]);
   private lastLogLength = 0;
@@ -53,17 +55,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
   private roleRevealShown = false;
   private onlineBound = () => this.isOnline.set(true);
   private offlineBound = () => this.isOnline.set(false);
-  private revealAfterTransition = false;
   private pollSub?: Subscription;
   private socketSub?: Subscription;
   private msgPollSub?: Subscription;
   private reconnectSub?: Subscription;
   private connErrorSub?: Subscription;
   private timerInterval?: ReturnType<typeof setInterval>;
-  private revealTimeout1?: ReturnType<typeof setTimeout>;
-  private revealTimeout2?: ReturnType<typeof setTimeout>;
-  private revealTimeout3?: ReturnType<typeof setTimeout>;
-  private videoFallbackTimeout?: ReturnType<typeof setTimeout>;
   private dayTransitionSent = false;
   private nightTransitionSent = false;
   private votingTransitionSent = false;
@@ -132,7 +129,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
       }
 
       const d = this.gameData;
-      const revealActive = this.showRoleReveal() || this.revealAfterTransition || !!this.transitionVideo();
+      const revealActive = this.revealActive();
 
       if (d?.phase === 'day' && d.phaseStartedAt) {
         const left = calcSecondsLeft(d.phaseStartedAt, d.settings?.dayDuration ?? 60, revealActive, now);
@@ -194,22 +191,21 @@ export class GameplayComponent implements OnInit, OnDestroy {
       const round = (game.data as Partial<MafiaGameData>)?.round;
       if (round === 1 && this.myIndexVal() >= 0 && !this.roleRevealShown) {
         this.roleRevealShown = true;
-        this.revealAfterTransition = true;
-        this.playTransitionVideo('/day-to-night.mp4');
+        this.playTransitionVideo('/day-to-night.mp4', true);
       }
     }
     if (newPhase === 'finished' && prevPhase !== 'finished') {
       this.gameService.clearGame(this.gameId);
     }
     const isActivePhase = ['night', 'day', 'voting'].includes(newPhase ?? '');
-    if (isActivePhase && !this.splitLayoutVisible() && !this.showRoleReveal()) {
+    if (isActivePhase && !this.splitLayoutVisible() && !this.revealActive()) {
       this.splitLayoutVisible.set(true);
     }
     if (prevPhase && prevPhase !== newPhase && isActivePhase && this.splitLayoutVisible()) {
       if (prevPhase === 'night' && newPhase === 'day') {
-        this.playTransitionVideo('/night-to-day.mp4');
+        this.playTransitionVideo('/night-to-day.mp4', false);
       } else if ((prevPhase === 'day' || prevPhase === 'voting') && newPhase === 'night') {
-        this.playTransitionVideo('/day-to-night.mp4');
+        this.playTransitionVideo('/day-to-night.mp4', false);
       } else {
         this.phaseAnimKey.update(k => k + 1);
       }
@@ -223,10 +219,6 @@ export class GameplayComponent implements OnInit, OnDestroy {
     this.reconnectSub?.unsubscribe();
     this.connErrorSub?.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
-    clearTimeout(this.revealTimeout1);
-    clearTimeout(this.revealTimeout2);
-    clearTimeout(this.revealTimeout3);
-    clearTimeout(this.videoFallbackTimeout);
     window.removeEventListener('online', this.onlineBound);
     window.removeEventListener('offline', this.offlineBound);
   }
@@ -318,6 +310,12 @@ export class GameplayComponent implements OnInit, OnDestroy {
     return d.votes[String(playerIndex)] !== undefined;
   }
 
+  get votedPlayerIndices(): number[] {
+    const d = this.gameData;
+    if (!d?.votes) return [];
+    return Object.keys(d.votes).map(Number);
+  }
+
   get dousedPlayers(): number[] {
     return this.gameData?.arsonistDoused ?? [];
   }
@@ -364,8 +362,7 @@ export class GameplayComponent implements OnInit, OnDestroy {
           const round = (game.data as Partial<MafiaGameData>)?.round;
           if (newPhase === 'night' && round === 1 && this.myIndexVal() >= 0 && !this.roleRevealShown) {
             this.roleRevealShown = true;
-            this.revealAfterTransition = true;
-            this.playTransitionVideo('/day-to-night.mp4');
+            this.playTransitionVideo('/day-to-night.mp4', true);
           }
           this.gameService.emitUpdate(game);
         }
@@ -499,10 +496,6 @@ export class GameplayComponent implements OnInit, OnDestroy {
     });
   }
 
-  toggleRoleCard() {
-    this.roleCardHidden.update(v => !v);
-  }
-
   changeVote() {
     this.hasVoted.set(false);
     this.myVoteTarget.set(null);
@@ -567,46 +560,21 @@ export class GameplayComponent implements OnInit, OnDestroy {
     });
   }
 
-  onTransitionEnd() {
-    if (!this.transitionVideo()) return; // already handled
-    clearTimeout(this.videoFallbackTimeout);
-    this.transitionVideo.set(null);
-    if (this.revealAfterTransition) {
-      this.revealAfterTransition = false;
-      this.showRoleReveal.set(true);
-      this.roleRevealed.set(false);
-      this.cardFlipped.set(false);
-      this.startAutoReveal();
-      return;
+  onRoleRevealTransitionComplete(e: { wasReveal: boolean }) {
+    if (e.wasReveal) {
+      this.splitLayoutVisible.set(true);
+    } else {
+      this.phaseAnimKey.update(k => k + 1);
     }
-    this.phaseAnimKey.update(k => k + 1);
   }
 
-  onVideoStalled() {
-    // Video buffering or suspended — skip after short delay instead of waiting forever
-    clearTimeout(this.videoFallbackTimeout);
-    this.videoFallbackTimeout = setTimeout(() => this.onTransitionEnd(), 2_000);
+  onRoleRevealActiveChange(active: boolean) {
+    this.revealActive.set(active);
   }
 
-  private playTransitionVideo(src: string) {
-    clearTimeout(this.videoFallbackTimeout);
-    this.transitionVideo.set(src);
-    // Fallback: if ended/error/stalled events all fail — force continue after 12s (video is 8s)
-    this.videoFallbackTimeout = setTimeout(() => this.onTransitionEnd(), 12_000);
-  }
-
-  private startAutoReveal() {
-    this.revealTimeout1 = setTimeout(() => {
-      this.cardFlipped.set(true);
-      this.revealTimeout2 = setTimeout(() => {
-        this.roleRevealed.set(true);
-        this.splitLayoutVisible.set(true);
-        this.revealTimeout3 = setTimeout(() => {
-          this.showRoleReveal.set(false);
-          this.cardFlipped.set(false);
-        }, 600);
-      }, 650 + 2000);
-    }, 600);
+  private playTransitionVideo(src: string, reveal: boolean) {
+    // Fresh object reference so child's ngOnChanges fires even if same video replays
+    this.pendingTransition.set({ video: src, reveal });
   }
 
   // ── Night action helpers (delegated to NightActionService) ───────────

@@ -1,0 +1,30 @@
+<!-- Phase Transition Video Overlay -->
+@if (currentVideo()) {
+  <div class="fixed inset-0 z-50 bg-black">
+    <video [src]="currentVideo()!" autoplay muted playsinline preload="auto"
+      class="w-full h-full object-cover"
+      (ended)="onVideoEnded()"
+      (error)="onVideoEnded()"
+      (stalled)="onVideoStalled()">
+    </video>
+  </div>
+}
+
+<!-- Role Reveal Overlay -->
+@if (showReveal() && myRole) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black px-8"
+    [class]="roleRevealed() ? 'pointer-events-none' : ''">
+    <div class="w-full max-w-sm"
+      [class.card-fly-right]="roleRevealed()">
+      <div class="flip-card w-full">
+        <div class="flip-inner w-full rounded-2xl shadow-2xl shadow-black/80"
+          [class.flipped]="cardFlipped()">
+          <img src="/card-back.jpg" alt="Card back"
+            class="flip-face w-full rounded-2xl block" />
+          <img [src]="roleImageSrc" [alt]="myRole!"
+            class="flip-back-face w-full rounded-2xl block" />
+        </div>
+      </div>
+    </div>
+  </div>
+}

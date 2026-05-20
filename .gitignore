@@ -1,4 +1,4 @@
-1# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Compiled output
 /dist
@@ -47,12 +47,11 @@ video_2026-03-06_23-55-21.mp4
 video_2026-03-07_00-19-02.mp4
 photo_2026-03-07_12-00-40.jpg
 photo_2026-03-07_15-03-04.jpg
+image*.png
 ніч переходить в день.mp4
-.gitignore
 день переходить в ніч.mp4
 MAFIA_MODE.md
 nginx.conf
 waw-gamerole
-waw-gamerole
-.claude/settings.local.json
+.claude/
 тз від джеміні.txt
